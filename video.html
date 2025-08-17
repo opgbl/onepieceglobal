@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Reproductor</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a href="./index.html" class="back">← Volver</a>
+    <h1 id="title">Episodio</h1>
+  </header>
+  <main class="player">
+    <div class="video-box">
+      <div class="fake-video">Reproductor de video</div>
+    </div>
+    <div class="downloads" id="dls"></div>
+  </main>
+  <script src="./api.js"></script>
+  <script>
+    async function load(){const params=new URLSearchParams(location.search);const id=params.get("id");const r=await fetch(API_URL+"/api/episodes/"+id);if(!r.ok){document.getElementById("title").textContent="No encontrado";return}const ep=await r.json();document.getElementById("title").textContent="Episodio "+ep.id+": "+ep.title;const dls=document.getElementById("dls");(ep.quality||[]).forEach(q=>{const a=document.createElement("a");a.className="btn";a.textContent="Descargar "+q;a.href="#";dls.appendChild(a)})}load();
+  </script>
+</body>
+</html>

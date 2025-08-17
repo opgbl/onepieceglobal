@@ -43,16 +43,8 @@ async function init(){
   try{
     const cache=sessionStorage.getItem("eps_cache");
     let all=null;
-    if(cache){
-      try{
-        const o=JSON.parse(cache);
-        if(Date.now()-o.t<600000)all=o.d;
-      }catch{}
-    }
-    if(!all){
-      all=await fetchEpisodes();
-      sessionStorage.setItem("eps_cache",JSON.stringify({t:Date.now(),d:all}));
-    }
+    if(cache){try{const o=JSON.parse(cache);if(Date.now()-o.t<600000)all=o.d}catch{}}
+    if(!all){all=await fetchEpisodes();sessionStorage.setItem("eps_cache",JSON.stringify({t:Date.now(),d:all}))}
     render(all);
     q.addEventListener("input",()=>render(filterList(all,q.value)));
   }catch{

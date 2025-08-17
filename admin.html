@@ -3,80 +3,49 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Admin</title>
-<link rel="stylesheet" href="style.css"/>
-<style>
-.admin{display:grid;gap:1rem;padding:1rem;max-width:900px;margin:0 auto}
-.cardx{background:#111827;border:1px solid #1f2937;border-radius:1rem;padding:1rem;display:grid;gap:.8rem}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
-.row3{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem}
-input,button,select,textarea{padding:.6rem .7rem;background:#0f172a;color:#e5e7eb;border:1px solid #1f2937;border-radius:.5rem}
-button{background:#3b82f6;border:none;font-weight:600;cursor:pointer}
-button.secondary{background:#374151}
-table{width:100%;border-collapse:collapse}
-th,td{border-bottom:1px solid #1f2937;padding:.5rem;text-align:left;font-size:.9rem}
-.actions{display:flex;gap:.4rem}
-.badge{display:inline-block;padding:.15rem .45rem;background:#1f2937;border-radius:.5rem;font-size:.75rem;color:#9ca3af}
-#loader{position:fixed;top:0;left:0;width:100%;height:3px;background:linear-gradient(90deg,#3b82f6,#22d3ee,#3b82f6);background-size:200% 100%;animation:loading 1s linear infinite;z-index:9999;display:none}
-@keyframes loading{0%{background-position:200% 0}100%{background-position:-200% 0}}
-</style>
+<title>Panel Admin</title>
+<link rel="stylesheet" href="admin.css"/>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 <script src="api.js"></script>
 <script src="ts.js"></script>
 </head>
 <body>
 <div id="loader"></div>
-<div class="admin">
-  <div class="cardx">
-    <h2>Acceso</h2>
-    <div class="row">
-      <input id="pwd" type="password" placeholder="Contraseña"/>
-      <button id="btnLogin">Entrar</button>
-    </div>
-    <div id="authState" class="badge">Sin sesión</div>
-  </div>
 
-  <div class="cardx">
-    <h2>Episodios</h2>
-    <div class="row3">
-      <input id="ep" type="number" placeholder="Episodio"/>
-      <input id="titulo" placeholder="Título"/>
-      <input id="fecha" placeholder="Fecha"/>
-    </div>
-    <input id="embed" placeholder="Embed URL"/>
-    <div class="row3">
-      <input id="dl1080" placeholder="DL 1080p"/>
-      <input id="dl720" placeholder="DL 720p"/>
-      <input id="dl480" placeholder="DL 480p"/>
-    </div>
-    <div class="row">
-      <button id="btnCrear">Crear</button>
-      <button id="btnActualizar" class="secondary">Actualizar</button>
-    </div>
-  </div>
+<header class="topbar">
+  <h1>Panel de Administración</h1>
+  <span id="tokenInfo">No autenticado</span>
+  <button id="btnLogout" class="hidden">Cerrar sesión</button>
+</header>
 
-  <div class="cardx">
-    <div class="row">
-      <input id="buscar" placeholder="Buscar"/>
-      <button id="btnRecargar" class="secondary">Recargar</button>
-    </div>
-    <div style="overflow:auto">
-      <table>
-        <thead>
-          <tr>
-            <th>Ep</th>
-            <th>Título</th>
-            <th>Fecha</th>
-            <th>Calidades</th>
-            <th class="actions">Acciones</th>
-          </tr>
-        </thead>
-        <tbody id="tbody"></tbody>
-      </table>
-    </div>
-  </div>
-</div>
-<div id="ts"></div>
+<main>
+  <section id="loginBox">
+    <h2>Iniciar sesión</h2>
+    <input id="password" type="password" placeholder="Contraseña"/>
+    <button id="btnLogin">Entrar</button>
+    <p id="loginMsg"></p>
+  </section>
+
+  <section id="tabs" class="hidden">
+    <h2>Gestión de episodios</h2>
+
+    <form id="formAdd">
+      <h3>Nuevo episodio</h3>
+      <input id="epNum" type="number" placeholder="Número de episodio" required/>
+      <input id="epTitle" type="text" placeholder="Título" required/>
+      <input id="epDate" type="date" required/>
+      <input id="epEmbed" type="url" placeholder="URL embed"/>
+      <input id="epDl1080" type="url" placeholder="Descarga 1080p"/>
+      <input id="epDl720" type="url" placeholder="Descarga 720p"/>
+      <input id="epDl480" type="url" placeholder="Descarga 480p"/>
+      <button type="submit">Publicar</button>
+    </form>
+
+    <h3>Episodios existentes</h3>
+    <div id="list"></div>
+  </section>
+</main>
+
 <script src="admin.js"></script>
 </body>
 </html>

@@ -1,288 +1,129 @@
-const API_URL = "https://opapi.onrender.com";
+let ADMIN_TOKEN=null;
+const loader=document.getElementById("loader");
+function showLoader(){loader.style.display="block"}function hideLoader(){loader.style.display="none"}
 
-const $$ = (sel, p = document) => Array.from(p.querySelectorAll(sel));
-const $ = (sel, p = document) => p.querySelector(sel);
-
-let TOKEN = null;
-let TOKEN_EXP = null;
-
-function setToken(tok, expSec = 24 * 3600) {
-  TOKEN = tok;
-  TOKEN_EXP = Date.now() + expSec * 1000;
-  localStorage.setItem("opg_jwt", tok);
-  localStorage.setItem("opg_jwt_exp", String(TOKEN_EXP));
-  updateAuthUI();
+async function fetchJSON(url,opts={}){
+  const h=Object.assign({},opts.headers||{});
+  if(ADMIN_TOKEN)h.Authorization="Bearer "+ADMIN_TOKEN;
+  const r=await fetch(url,Object.assign({credentials:"include",headers:h},opts));
+  if(!r.ok)throw new Error(String(r.status));
+  const ct=r.headers.get("content-type")||"";
+  return ct.includes("application/json")?r.json():r.text();
 }
 
-function loadToken() {
-  TOKEN = localStorage.getItem("opg_jwt");
-  TOKEN_EXP = Number(localStorage.getItem("opg_jwt_exp") || 0);
-  if (!TOKEN || !TOKEN_EXP || Date.now() > TOKEN_EXP) {
-    clearToken();
-    return;
-  }
-  updateAuthUI();
+async function ensureTS(){
+  showLoader();
+  await window.__tsGate.ensure();
+  hideLoader();
 }
 
-function clearToken() {
-  TOKEN = null;
-  TOKEN_EXP = null;
-  localStorage.removeItem("opg_jwt");
-  localStorage.removeItem("opg_jwt_exp");
-  updateAuthUI();
+async function login(){
+  const pwd=document.getElementById("pwd").value||"";
+  if(!pwd)return;
+  showLoader();
+  const data=await fetchJSON(API_URL+"/api/admin/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:pwd})}).finally(hideLoader);
+  ADMIN_TOKEN=data.token;
+  document.getElementById("authState").textContent="Sesión activa";
 }
 
-function authHeaders(extra = {}) {
-  const h = { "Content-Type": "application/json" };
-  if (TOKEN) h["Authorization"] = "Bearer " + TOKEN;
-  return { ...h, ...extra };
-}
-
-function setMsg(el, text, ok = false) {
-  if (!el) return;
-  el.textContent = text || "";
-  el.style.color = ok ? "#3fb950" : text ? "#f85149" : "";
-}
-
-function updateAuthUI() {
-  const chip = $("#tokenInfo");
-  const boxLogin = $("#loginBox");
-  const blockTabs = $("#tabs");
-  const btnLogout = $("#btnLogout");
-
-  if (!chip || !boxLogin || !blockTabs || !btnLogout) return;
-
-  if (TOKEN) {
-    const remaining = Math.max(0, Math.floor((TOKEN_EXP - Date.now()) / 1000));
-    const h = Math.floor(remaining / 3600);
-    const m = Math.floor((remaining % 3600) / 60);
-    chip.textContent = `Autenticado · expira en ${h}h ${m}m`;
-    chip.classList.add("ok");
-    btnLogout.classList.remove("hidden");
-    boxLogin.classList.add("hidden");
-    blockTabs.classList.remove("hidden");
-  } else {
-    chip.textContent = "No autenticado";
-    chip.classList.remove("ok");
-    btnLogout.classList.add("hidden");
-    boxLogin.classList.remove("hidden");
-    blockTabs.classList.add("hidden");
-  }
-}
-
-async function fetchJSON(url, opts = {}) {
-  const r = await fetch(url, opts);
-  const isJson = r.headers.get("content-type")?.includes("application/json");
-  const data = isJson ? await r.json().catch(() => ({})) : null;
-  if (!r.ok) throw new Error((data && data.error) || `HTTP ${r.status}`);
-  return data;
-}
-
-async function login() {
-  const pwd = $("#password")?.value || "";
-  const out = $("#loginMsg");
-  try {
-    const data = await fetchJSON(API_URL + "/api/admin/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password: pwd }),
-    });
-    setToken(data.token, data.expires_in || 86400);
-    setMsg(out, "OK", true);
-    await recargarListas();
-  } catch (e) {
-    setMsg(out, e.message);
-  }
-}
-
-async function getPublicEpisodes() {
-  const j = await fetchJSON(API_URL + "/api/episodes");
-  return j.items || [];
-}
-
-function toAdminPayload(prefix) {
-  const get = (id) => $("#" + prefix + id)?.value.trim() || "";
-  return {
-    episodio: get("-episodio"),
-    titulo: get("-titulo"),
-    fecha: get("-fecha"),
-    embed: get("-embed"),
-    dl1080: get("-dl1080"),
-    dl720: get("-dl720"),
-    dl480: get("-dl480"),
+function formData(){
+  const obj={
+    episodio:Number(document.getElementById("ep").value||0),
+    titulo:document.getElementById("titulo").value||"",
+    fecha:document.getElementById("fecha").value||"",
+    embed:document.getElementById("embed").value||"",
+    dl1080:document.getElementById("dl1080").value||"",
+    dl720:document.getElementById("dl720").value||"",
+    dl480:document.getElementById("dl480").value||""
   };
+  if(!obj.dl1080)delete obj.dl1080;
+  if(!obj.dl720)delete obj.dl720;
+  if(!obj.dl480)delete obj.dl480;
+  return obj;
 }
 
-async function recargarListas() {
-  const list = await getPublicEpisodes();
+function fillForm(ep){
+  document.getElementById("ep").value=ep.episodio||"";
+  document.getElementById("titulo").value=ep.titulo||"";
+  document.getElementById("fecha").value=ep.fecha||"";
+  document.getElementById("embed").value=ep.embed||"";
+  document.getElementById("dl1080").value=ep.dl1080||"";
+  document.getElementById("dl720").value=ep.dl720||"";
+  document.getElementById("dl480").value=ep.dl480||"";
+}
 
-  const cont = $("#list");
-  if (cont) {
-    cont.innerHTML = "";
-    const term = ($("#q")?.value || "").trim().toLowerCase();
-    list
-      .filter((e) => {
-        const id = String(e.episodio ?? e.id);
-        const title = (e.titulo ?? e.title ?? "").toLowerCase();
-        return !term || id.includes(term) || title.includes(term);
-      })
-      .forEach((e) => {
-        const row = document.createElement("div");
-        row.className = "row";
-        const id = e.episodio ?? e.id;
-        const title = e.titulo ?? e.title ?? "";
-        row.innerHTML = `<div class="cell">#${id}</div><div class="cell">${title}</div>
-          <div class="cell">
-            <button class="btn tiny" data-copy="/onepieceglobal/video.html?id=${id}">Copiar link</button>
-          </div>`;
-        cont.appendChild(row);
-      });
+async function listar(){
+  await ensureTS();
+  showLoader();
+  const res=await fetchJSON(API_URL+"/api/episodes").finally(hideLoader);
+  const items=(res.items||[]).sort((a,b)=>(b.episodio||0)-(a.episodio||0));
+  const q=document.getElementById("buscar").value.trim().toLowerCase();
+  const data=q?items.filter(e=>(e.titulo||"").toLowerCase().includes(q)||String(e.episodio).includes(q)):items;
+  const tb=document.getElementById("tbody");
+  tb.innerHTML="";
+  const frag=document.createDocumentFragment();
+  for(const it of data){
+    const tr=document.createElement("tr");
+    const t1=document.createElement("td");t1.textContent=it.episodio||"";
+    const t2=document.createElement("td");t2.textContent=it.titulo||"";
+    const t3=document.createElement("td");t3.textContent=it.fecha||"";
+    const t4=document.createElement("td");
+    const quals=[];
+    if(it.dl1080)quals.push("1080p");
+    if(it.dl720)quals.push("720p");
+    if(it.dl480)quals.push("480p");
+    t4.textContent=quals.join(" ");
+    const t5=document.createElement("td");
+    const eBtn=document.createElement("button");eBtn.textContent="Editar";
+    eBtn.addEventListener("click",()=>fillForm(it));
+    const dBtn=document.createElement("button");dBtn.textContent="Borrar";dBtn.className="secondary";
+    dBtn.addEventListener("click",()=>borrar(it.episodio));
+    t5.className="actions";
+    t5.appendChild(eBtn);t5.appendChild(dBtn);
+    tr.appendChild(t1);tr.appendChild(t2);tr.appendChild(t3);tr.appendChild(t4);tr.appendChild(t5);
+    frag.appendChild(tr);
   }
-
-  const selEdit = $("#edit-select");
-  const selDel = $("#del-select");
-  if (selEdit && selDel) {
-    selEdit.innerHTML = "";
-    selDel.innerHTML = "";
-    selEdit.appendChild(new Option("Selecciona", ""));
-    selDel.appendChild(new Option("Selecciona", ""));
-    list.forEach((e) => {
-      const text = `${e.episodio ?? e.id} - ${(e.titulo ?? e.title) || ""}`;
-      const opt1 = new Option(text, String(e.episodio ?? e.id));
-      const opt2 = new Option(text, String(e.episodio ?? e.id));
-      selEdit.appendChild(opt1);
-      selDel.appendChild(opt2);
-    });
-  }
+  tb.appendChild(frag);
 }
 
-async function publicar() {
-  const msg = $("#pubMsg");
-  try {
-    const payload = toAdminPayload("pub");
-    const data = await fetchJSON(API_URL + "/api/admin/episodes", {
-      method: "POST",
-      headers: authHeaders(),
-      body: JSON.stringify(payload),
-    });
-    setMsg(msg, "Publicado ID " + (data.id || data.episodio), true);
-    await recargarListas();
-  } catch (e) {
-    setMsg(msg, e.message);
-  }
+async function crear(){
+  if(!ADMIN_TOKEN)await login();
+  const payload=formData();
+  if(!payload.episodio||!payload.titulo||!payload.fecha||!payload.embed)return;
+  showLoader();
+  await fetchJSON(API_URL+"/api/admin/episodes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)}).finally(hideLoader);
+  await listar();
 }
 
-async function cargarSeleccionParaEditar() {
-  const sel = $("#edit-select")?.value;
-  const msg = $("#editMsg");
-  if (!sel) {
-    setMsg(msg, "Selecciona un episodio");
-    return;
-  }
-  const list = await getPublicEpisodes();
-  const ep = list.find((e) => String(e.episodio ?? e.id) === String(sel));
-  if (!ep) {
-    setMsg(msg, "No encontrado");
-    return;
-  }
-  const set = (id, v) => { const el = $("#edit" + id); if (el) el.value = v || ""; };
-  ($("#edit-episodio") || {}).value = ep.episodio ?? ep.id ?? "";
-  ($("#edit-titulo") || {}).value = ep.titulo ?? ep.title ?? "";
-  ($("#edit-fecha") || {}).value = ep.fecha ?? "";
-  ($("#edit-embed") || {}).value = ep.embed ?? "";
-  ($("#edit-dl1080") || {}).value = ep.dl1080 ?? "";
-  ($("#edit-dl720") || {}).value = ep.dl720 ?? "";
-  ($("#edit-dl480") || {}).value = ep.dl480 ?? "";
-  setMsg(msg, "");
+async function actualizar(){
+  if(!ADMIN_TOKEN)await login();
+  const payload=formData();
+  if(!payload.episodio)return;
+  const id=payload.episodio;
+  showLoader();
+  await fetchJSON(API_URL+"/api/admin/episodes/"+id,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)}).finally(hideLoader);
+  await listar();
 }
 
-async function guardarEdicion() {
-  const sel = $("#edit-select")?.value;
-  const msg = $("#editMsg");
-  if (!sel) {
-    setMsg(msg, "Selecciona un episodio");
-    return;
-  }
-  try {
-    const payload = toAdminPayload("edit");
-    await fetchJSON(API_URL + "/api/admin/episodes/" + encodeURIComponent(sel), {
-      method: "PUT",
-      headers: authHeaders(),
-      body: JSON.stringify(payload),
-    });
-    setMsg(msg, "Guardado", true);
-    await recargarListas();
-  } catch (e) {
-    setMsg(msg, e.message);
-  }
+async function borrar(id){
+  if(!ADMIN_TOKEN)await login();
+  if(!id)return;
+  showLoader();
+  await fetchJSON(API_URL+"/api/admin/episodes/"+id,{method:"DELETE"}).finally(hideLoader);
+  await listar();
 }
 
-async function eliminar() {
-  const sel = $("#del-select")?.value;
-  const msg = $("#delMsg");
-  if (!sel) {
-    setMsg(msg, "Selecciona un episodio");
-    return;
-  }
-  if (!confirm("¿Eliminar episodio " + sel + "?")) return;
-  const headers = authHeaders();
-  const apikey = $("#del-apikey")?.value.trim();
-  if (apikey) headers["X-API-SECRET"] = apikey;
-  try {
-    await fetchJSON(API_URL + "/api/admin/episodes/" + encodeURIComponent(sel), {
-      method: "DELETE",
-      headers,
-    });
-    setMsg(msg, "Eliminado", true);
-    await recargarListas();
-  } catch (e) {
-    setMsg(msg, e.message);
-  }
+function bind(){
+  document.getElementById("btnLogin").addEventListener("click",login);
+  document.getElementById("btnCrear").addEventListener("click",crear);
+  document.getElementById("btnActualizar").addEventListener("click",actualizar);
+  document.getElementById("btnRecargar").addEventListener("click",listar);
+  document.getElementById("buscar").addEventListener("input",listar);
 }
 
-function bindTabs() {
-  $$(".tab").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      $$(".tab").forEach((b) => b.classList.remove("active"));
-      $$(".tabpane").forEach((p) => p.classList.add("hidden"));
-      btn.classList.add("active");
-      const pane = $("#" + btn.dataset.tab);
-      if (pane) pane.classList.remove("hidden");
-    });
-  });
+async function init(){
+  bind();
+  await listar();
 }
 
-function bindListActions() {
-  $("#btnRecargar")?.addEventListener("click", recargarListas);
-  $("#q")?.addEventListener("input", recargarListas);
-  $("#list")?.addEventListener("click", (ev) => {
-    const btn = ev.target.closest("[data-copy]");
-    if (!btn) return;
-    const path = btn.getAttribute("data-copy");
-    const url = location.origin + path;
-    navigator.clipboard.writeText(url).then(() => {
-      const prev = btn.textContent;
-      btn.textContent = "Copiado";
-      setTimeout(() => (btn.textContent = prev), 1000);
-    });
-  });
-}
-
-function bindUI() {
-  bindTabs();
-  bindListActions();
-  $("#btnLogin")?.addEventListener("click", login);
-  $("#btnLogout")?.addEventListener("click", clearToken);
-  $("#btnPublicar")?.addEventListener("click", publicar);
-  $("#edit-select")?.addEventListener("change", cargarSeleccionParaEditar);
-  $("#btnGuardar")?.addEventListener("click", guardarEdicion);
-  $("#btnEliminar")?.addEventListener("click", eliminar);
-}
-
-async function init() {
-  loadToken();
-  bindUI();
-  try { await recargarListas(); } catch {}
-}
-
-window.addEventListener("DOMContentLoaded", init);
+document.addEventListener("DOMContentLoaded",init);

@@ -1,93 +1,82 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Panel Admin</title>
-  <link rel="stylesheet" href="./admin.css" />
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Admin</title>
+<link rel="stylesheet" href="style.css"/>
+<style>
+.admin{display:grid;gap:1rem;padding:1rem;max-width:900px;margin:0 auto}
+.cardx{background:#111827;border:1px solid #1f2937;border-radius:1rem;padding:1rem;display:grid;gap:.8rem}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
+.row3{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem}
+input,button,select,textarea{padding:.6rem .7rem;background:#0f172a;color:#e5e7eb;border:1px solid #1f2937;border-radius:.5rem}
+button{background:#3b82f6;border:none;font-weight:600;cursor:pointer}
+button.secondary{background:#374151}
+table{width:100%;border-collapse:collapse}
+th,td{border-bottom:1px solid #1f2937;padding:.5rem;text-align:left;font-size:.9rem}
+.actions{display:flex;gap:.4rem}
+.badge{display:inline-block;padding:.15rem .45rem;background:#1f2937;border-radius:.5rem;font-size:.75rem;color:#9ca3af}
+#loader{position:fixed;top:0;left:0;width:100%;height:3px;background:linear-gradient(90deg,#3b82f6,#22d3ee,#3b82f6);background-size:200% 100%;animation:loading 1s linear infinite;z-index:9999;display:none}
+@keyframes loading{0%{background-position:200% 0}100%{background-position:-200% 0}}
+</style>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+<script src="api.js"></script>
+<script src="ts.js"></script>
 </head>
 <body>
-  <header class="topbar">
-    <h1>Panel de Administración</h1>
-    <div class="right">
-      <span id="tokenInfo" class="chip">No autenticado</span>
-      <button id="btnLogout" class="btn secondary hidden">Salir</button>
+<div id="loader"></div>
+<div class="admin">
+  <div class="cardx">
+    <h2>Acceso</h2>
+    <div class="row">
+      <input id="pwd" type="password" placeholder="Contraseña"/>
+      <button id="btnLogin">Entrar</button>
     </div>
-  </header>
-  <main class="wrap">
-    <section id="loginBox" class="card">
-      <h2>Iniciar sesión</h2>
-      <div class="grid">
-        <input id="password" type="password" placeholder="Contraseña admin" />
-        <button id="btnLogin" class="btn">Entrar</button>
-      </div>
-      <p id="loginMsg" class="msg"></p>
-    </section>
-    <section id="tabs" class="tabs hidden">
-      <nav class="tabbar">
-        <button data-tab="tab-publicar" class="tab active">Publicar</button>
-        <button data-tab="tab-editar" class="tab">Editar</button>
-        <button data-tab="tab-eliminar" class="tab">Eliminar</button>
-        <button data-tab="tab-listar" class="tab">Listar/Buscar</button>
-        <button data-tab="tab-importar" class="tab">Importar JSON</button>
-      </nav>
-      <section id="tab-publicar" class="card tabpane">
-        <h3>Publicar episodio</h3>
-        <div class="grid">
-          <input id="pub-episodio" placeholder="N° episodio" />
-          <input id="pub-titulo" placeholder="Título" />
-          <input id="pub-fecha" placeholder="Fecha (YYYY-MM-DD)" />
-          <input id="pub-embed" placeholder="Embed ID o URL" />
-          <input id="pub-dl1080" placeholder="Enlace 1080p (opcional)" />
-          <input id="pub-dl720" placeholder="Enlace 720p (opcional)" />
-          <input id="pub-dl480" placeholder="Enlace 480p (opcional)" />
-          <button id="btnPublicar" class="btn">Publicar</button>
-        </div>
-        <p id="pubMsg" class="msg"></p>
-      </section>
-      <section id="tab-editar" class="card tabpane hidden">
-        <h3>Editar episodio</h3>
-        <div class="grid">
-          <select id="edit-select"></select>
-          <input id="edit-episodio" placeholder="N° episodio" />
-          <input id="edit-titulo" placeholder="Título" />
-          <input id="edit-fecha" placeholder="Fecha (YYYY-MM-DD)" />
-          <input id="edit-embed" placeholder="Embed ID o URL" />
-          <input id="edit-dl1080" placeholder="Enlace 1080p (opcional)" />
-          <input id="edit-dl720" placeholder="Enlace 720p (opcional)" />
-          <input id="edit-dl480" placeholder="Enlace 480p (opcional)" />
-          <button id="btnGuardar" class="btn">Guardar</button>
-        </div>
-        <p id="editMsg" class="msg"></p>
-      </section>
-      <section id="tab-eliminar" class="card tabpane hidden">
-        <h3>Eliminar episodio</h3>
-        <div class="grid">
-          <select id="del-select"></select>
-          <input id="del-apikey" type="password" placeholder="API_SECRET (opcional si tu API lo requiere)" />
-          <button id="btnEliminar" class="btn danger">Eliminar</button>
-        </div>
-        <p id="delMsg" class="msg"></p>
-      </section>
-      <section id="tab-listar" class="card tabpane hidden">
-        <h3>Listar / Buscar</h3>
-        <div class="grid">
-          <input id="q" placeholder="Buscar por título o número" />
-          <button id="btnRecargar" class="btn secondary">Recargar</button>
-        </div>
-        <div id="list" class="list"></div>
-      </section>
-      <section id="tab-importar" class="card tabpane hidden">
-        <h3>Importar JSON (lote)</h3>
-        <textarea id="jsonInput" placeholder='[{"episodio":1,"titulo":"...","fecha":"YYYY-MM-DD","embed":"...","dl1080":"","dl720":"","dl480":""}]'></textarea>
-        <div class="grid">
-          <button id="btnImportar" class="btn">Importar</button>
-          <button id="btnEjemplo" class="btn secondary">Ejemplo</button>
-        </div>
-        <p id="impMsg" class="msg"></p>
-      </section>
-    </section>
-  </main>
-  <script src="./admin.js"></script>
+    <div id="authState" class="badge">Sin sesión</div>
+  </div>
+
+  <div class="cardx">
+    <h2>Episodios</h2>
+    <div class="row3">
+      <input id="ep" type="number" placeholder="Episodio"/>
+      <input id="titulo" placeholder="Título"/>
+      <input id="fecha" placeholder="Fecha"/>
+    </div>
+    <input id="embed" placeholder="Embed URL"/>
+    <div class="row3">
+      <input id="dl1080" placeholder="DL 1080p"/>
+      <input id="dl720" placeholder="DL 720p"/>
+      <input id="dl480" placeholder="DL 480p"/>
+    </div>
+    <div class="row">
+      <button id="btnCrear">Crear</button>
+      <button id="btnActualizar" class="secondary">Actualizar</button>
+    </div>
+  </div>
+
+  <div class="cardx">
+    <div class="row">
+      <input id="buscar" placeholder="Buscar"/>
+      <button id="btnRecargar" class="secondary">Recargar</button>
+    </div>
+    <div style="overflow:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>Ep</th>
+            <th>Título</th>
+            <th>Fecha</th>
+            <th>Calidades</th>
+            <th class="actions">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<div id="ts"></div>
+<script src="admin.js"></script>
 </body>
 </html>

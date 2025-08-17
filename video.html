@@ -1,94 +1,29 @@
 <!doctype html>
 <html lang="es">
+
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Reproductor</title>
-  <link rel="stylesheet" href="./style.css"/>
+  <link rel="stylesheet" href="./style.css" />
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
+
 <body>
-<header class="topbar">
-  <a href="./index.html" class="back">← Volver</a>
-  <h1 id="title">Episodio</h1>
-</header>
-<main class="player">
-  <div class="video-box">
-    <div class="fake-video" id="embedBox">Reproductor de video</div>
-  </div>
-  <div class="downloads" id="dls"></div>
-</main>
-<div id="ts"></div>
-
-<script src="./api.js"></script>
-<script>
-const SITE_KEY="0x4AAAAAABshM3tkI6jl4RQn";
-let tsReady=false, tsWidget=null, tsExec=false, tsPromise=null;
-
-function mountTS(){
-  if(tsWidget) return;
-  tsWidget=turnstile.render("#ts",{
-    sitekey:SITE_KEY,
-    size:"invisible",
-    callback:async(token)=>{
-      const r=await fetch(API_URL+"/api/verify-turnstile",{
-        method:"POST",
-        credentials:"include",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({token})
-      });
-      tsReady=r.ok;
-    }
-  });
-}
-
-async function ensureTurnstile(){
-  if(tsReady) return;
-  if(tsPromise) return tsPromise;
-  tsPromise=(async()=>{
-    mountTS();
-    if(tsExec) turnstile.reset(tsWidget);
-    tsExec=true;
-    turnstile.execute(tsWidget);
-    const t0=Date.now();
-    while(!tsReady && Date.now()-t0<8000) await new Promise(r=>setTimeout(r,120));
-    tsExec=false;
-    if(!tsReady) throw new Error("Turnstile timeout");
-  })().finally(()=>{tsPromise=null});
-  return tsPromise;
-}
-
-async function load(){
-  await ensureTurnstile();
-  const p=new URLSearchParams(location.search);
-  const id=p.get("id");
-  const r=await fetch(API_URL+"/api/episodes/"+id,{credentials:"include"});
-  if(!r.ok){document.getElementById("title").textContent="No encontrado";return}
-  const ep=await r.json();
-  document.getElementById("title").textContent="Episodio "+(ep.episodio??id)+": "+(ep.titulo||"");
-  const dls=document.getElementById("dls");
-  ["dl1080","dl720","dl480"].forEach(k=>{
-    if(ep[k]){
-      const a=document.createElement("a");
-      a.className="btn";
-      a.textContent="Descargar "+k.replace("dl","")+"p";
-      a.href=ep[k];
-      dls.appendChild(a);
-    }
-  });
-  const box=document.getElementById("embedBox");
-  box.textContent="";
-  if(ep.embed){
-    const iframe=document.createElement("iframe");
-    iframe.width="100%";
-    iframe.height="360";
-    iframe.src=ep.embed;
-    iframe.allow="autoplay; fullscreen; picture-in-picture";
-    iframe.frameBorder="0";
-    box.appendChild(iframe);
-  }
-}
-load();
-</script>
+  <header class="topbar">
+    <a href="./index.html" class="back">← Volver</a>
+    <h1 id="title">Episodio</h1>
+  </header>
+  <main class="player">
+    <div class="video-box">
+      <div class="fake-video" id="embedBox">Reproductor de video</div>
+    </div>
+    <div class="downloads" id="dls"></div>
+  </main>
+  <div id="ts"></div>
+  <script src="./api.js"></script>
+  <script src="./ts.js"></script>
+  <script src="./video.js"></script>
 </body>
+
 </html>

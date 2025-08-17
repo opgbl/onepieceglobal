@@ -1,0 +1,4 @@
+const SITE_KEY="0x4AAAAAABshM3tkI6jl4RQn";
+let tsReady=false,tsWidget=null,tsExec=false,tsPromise=null;
+function mountTS(){if(tsWidget)return;const host=document.getElementById("ts")||(()=>{const d=document.createElement("div");d.id="ts";document.body.appendChild(d);return d})();tsWidget=turnstile.render(host,{sitekey:SITE_KEY,size:"invisible",callback:async t=>{const r=await fetch(API_URL+"/api/verify-turnstile",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({token:t})});tsReady=r.ok}})}
+async function ensureTurnstile(){if(tsReady)return;if(tsPromise)return tsPromise;tsPromise=(async()=>{mountTS();if(tsExec)turnstile.reset(tsWidget);tsExec=true;turnstile.execute(tsWidget);const t0=Date.now();while(!tsReady&&Date.now()-t0<8000)await new Promise(r=>setTimeout(r,120));tsExec=false;if(!tsReady)throw new Error("Turnstile timeout")})().finally(()=>{tsPromise=null});return tsPromise}

@@ -1,4 +1,67 @@
 const SITE_KEY="0x4AAAAAABshM3tkI6jl4RQn";
-let tsReady=false,tsWidget=null,tsExec=false,tsPromise=null;
-function mountTS(){if(tsWidget)return;const host=document.getElementById("ts")||(()=>{const d=document.createElement("div");d.id="ts";document.body.appendChild(d);return d})();tsWidget=turnstile.render(host,{sitekey:SITE_KEY,size:"invisible",callback:async t=>{const r=await fetch(API_URL+"/api/verify-turnstile",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({token:t})});tsReady=r.ok}})}
-async function ensureTurnstile(){if(tsReady)return;if(tsPromise)return tsPromise;tsPromise=(async()=>{mountTS();if(tsExec)turnstile.reset(tsWidget);tsExec=true;turnstile.execute(tsWidget);const t0=Date.now();while(!tsReady&&Date.now()-t0<8000)await new Promise(r=>setTimeout(r,120));tsExec=false;if(!tsReady)throw new Error("Turnstile timeout")})().finally(()=>{tsPromise=null});return tsPromise}
+
+(function(){
+  if (window.__tsGate) return;
+
+  let ready=false, widget=null, running=false, promise=null;
+
+  function waitLib(){
+    return new Promise((res,rej)=>{
+      const t0=Date.now();
+      (function spin(){
+        if (window.turnstile && typeof turnstile.render==="function") return res();
+        if (Date.now()-t0>10000) return rej(new Error("Turnstile not loaded"));
+        setTimeout(spin,80);
+      })();
+    });
+  }
+
+  function mount(){
+    if (widget) return;
+    let host=document.getElementById("ts");
+    if(!host){ host=document.createElement("div"); host.id="ts"; document.body.appendChild(host); }
+    widget=turnstile.render(host,{
+      sitekey:SITE_KEY,
+      size:"invisible",
+      callback:async(token)=>{
+        const r=await fetch(API_URL+"/api/verify-turnstile",{
+          method:"POST",
+          credentials:"include",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({token})
+        });
+        ready=r.ok;
+      }
+    });
+  }
+
+  async function ensure(){
+    if (ready) return;
+    if (promise) return promise;
+
+    promise=(async()=>{
+      await waitLib();
+      mount();
+      if (running) { turnstile.reset(widget); }
+      running=true;
+      try{
+        turnstile.execute(widget);
+        const t0=Date.now();
+        while(!ready && Date.now()-t0<9000) await new Promise(r=>setTimeout(r,100));
+        if(!ready){
+          turnstile.reset(widget);
+          turnstile.execute(widget);
+          const t1=Date.now();
+          while(!ready && Date.now()-t1<6000) await new Promise(r=>setTimeout(r,100));
+          if(!ready) throw new Error("Turnstile timeout");
+        }
+      } finally {
+        running=false;
+      }
+    })().finally(()=>{ promise=null; });
+
+    return promise;
+  }
+
+  window.__tsGate={ ensure: ensure, isReady: ()=>ready };
+})();

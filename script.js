@@ -1,6 +1,43 @@
-const grid = document.getElementById("grid"); const q = document.getElementById("q");
-async function fetchEpisodes() { await ensureTurnstile(); const r = await fetch(API_URL + "/api/episodes", { credentials: "include" }); if (!r.ok) throw new Error("API error"); const data = await r.json(); return data.items || [] }
-function render(list) { grid.innerHTML = ""; const tpl = document.getElementById("card-tpl"); list.forEach(item => { const node = tpl.content.cloneNode(true); const epNum = item.episodio ?? item.id; node.querySelector(".title").textContent = `Episodio ${epNum}: ${item.titulo ?? item.title ?? ""}`; const qwrap = node.querySelector(".qualities");["dl1080", "dl720", "dl480"].forEach(k => { if (item[k]) { const span = document.createElement("span"); span.className = "chip"; span.textContent = k.replace("dl", "") + "p"; qwrap.appendChild(span) } }); node.querySelector(".btn").href = "./video.html?id=" + epNum; grid.appendChild(node) }) }
-function filterList(list, term) { const t = term.trim().toLowerCase(); if (!t) return list; return list.filter(e => (e.titulo || e.title || "").toLowerCase().includes(t) || String(e.episodio || e.id).includes(t)) }
-async function init() { try { const all = await fetchEpisodes(); render(all); q.addEventListener("input", () => render(filterList(all, q.value))) } catch { grid.innerHTML = '<p class="notice">No se pudo cargar el catálogo.</p>' } }
-document.addEventListener("DOMContentLoaded", init);
+const grid=document.getElementById("grid");const q=document.getElementById("q");
+
+async function fetchEpisodes(){
+  await window.__tsGate.ensure();
+  const r=await fetch(API_URL+"/api/episodes",{credentials:"include"});
+  if(!r.ok)throw new Error("API error");
+  const data=await r.json();
+  return data.items||[];
+}
+
+function render(list){
+  grid.innerHTML="";
+  const tpl=document.getElementById("card-tpl");
+  list.forEach(item=>{
+    const node=tpl.content.cloneNode(true);
+    const epNum=item.episodio??item.id;
+    node.querySelector(".title").textContent=`Episodio ${epNum}: ${item.titulo??item.title??""}`;
+    const qwrap=node.querySelector(".qualities");
+    ["dl1080","dl720","dl480"].forEach(k=>{
+      if(item[k]){const s=document.createElement("span");s.className="chip";s.textContent=k.replace("dl","")+"p";qwrap.appendChild(s)}
+    });
+    node.querySelector(".btn").href="./video.html?id="+epNum;
+    grid.appendChild(node);
+  });
+}
+
+function filterList(list,term){
+  const t=term.trim().toLowerCase();
+  if(!t)return list;
+  return list.filter(e=>(e.titulo||e.title||"").toLowerCase().includes(t)||String(e.episodio||e.id).includes(t));
+}
+
+async function init(){
+  try{
+    const all=await fetchEpisodes();
+    render(all);
+    q.addEventListener("input",()=>render(filterList(all,q.value)));
+  }catch{
+    grid.innerHTML='<p class="notice">No se pudo cargar el catálogo.</p>';
+  }
+}
+
+document.addEventListener("DOMContentLoaded",init);

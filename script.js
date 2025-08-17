@@ -1,4 +1,3 @@
-const API_URL = "https://opapi.onrender.com";
 const SITE_KEY = "0x4AAAAAABshM3tkI6jl4RQn";
 
 let tsReady = false, tsWidget = null, tsExec = false, tsPromise = null;

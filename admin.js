@@ -1,1 +1,288 @@
-const API_URL="https://opapi.onrender.com";const els=(s,p=document)=>Array.from(p.querySelectorAll(s));const $=(s,p=document)=>p.querySelector(s);let TOKEN=null;let TOKEN_EXP=null;function setToken(t,e=86400){TOKEN=t;TOKEN_EXP=Date.now()+1e3*e;localStorage.setItem("opg_jwt",t);localStorage.setItem("opg_jwt_exp",String(TOKEN_EXP));updateAuthUI()}function loadToken(){TOKEN=localStorage.getItem("opg_jwt");TOKEN_EXP=Number(localStorage.getItem("opg_jwt_exp")||0);if(!TOKEN||!TOKEN_EXP||Date.now()>TOKEN_EXP){clearToken();return}updateAuthUI()}function clearToken(){TOKEN=null;TOKEN_EXP=null;localStorage.removeItem("opg_jwt");localStorage.removeItem("opg_jwt_exp");updateAuthUI()}function authHeaders(e={}){const t={"Content-Type":"application/json"};return TOKEN&&(t.Authorization="Bearer "+TOKEN),{...t,...e}}function setMsg(e,t,o=!1){e.textContent=t||"",e.style.color=o?"#3fb950":t?"#f85149":""}function updateAuthUI(){const e=$("#tokenInfo"),t=$("#loginBox"),o=$("#tabs"),n=$("#btnLogout");if(TOKEN){const t=Math.max(0,Math.floor((TOKEN_EXP-Date.now())/1e3)),o=Math.floor(t/3600),s=Math.floor(t%3600/60);e.textContent=`Autenticado · expira en ${o}h ${s}m`,e.classList.add("ok"),n.classList.remove("hidden"),t.classList.add("hidden"),o.classList.remove("hidden")}else e.textContent="No autenticado",e.classList.remove("ok"),n.classList.add("hidden"),t.classList.remove("hidden"),o.classList.add("hidden")}async function login(){const e=$("#password").value,t=await fetch(API_URL+"/api/admin/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:e})}),o=await t.json().catch(()=>({}));if(!t.ok){setMsg($("#loginMsg"),o.error||"Error de login");return}setToken(o.token,o.expires_in||86400),setMsg($("#loginMsg"),"OK",!0),await recargarListas()}function bindTabs(){els(".tab").forEach(e=>{e.addEventListener("click",()=>{els(".tab").forEach(e=>e.classList.remove("active")),els(".tabpane").forEach(e=>e.classList.add("hidden")),e.classList.add("active"),$("#"+e.dataset.tab).classList.remove("hidden")})})}async function fetchJSON(e,t={}){const o=await fetch(e,t);if(o.headers.get("content-type")?.includes("application/json")){const e=await o.json();if(!o.ok)throw new Error(e.error||"Error");return e}else{if(!o.ok)throw new Error("Error HTTP "+o.status);return null}}async function getPublicEpisodes(){const e=await fetchJSON(API_URL+"/api/episodes");return e.items||[]}function toAdminPayload(e){const t=t=>$("#"+e+t).value.trim();return{episodio:t("-episodio"),titulo:t("-titulo"),fecha:t("-fecha"),embed:t("-embed"),dl1080:t("-dl1080"),dl720:t("-dl720"),dl480:t("-dl480")}}async function recargarListas(){const e=await getPublicEpisodes(),t=$("#list");t.innerHTML="";const o=$("#q").value.trim().toLowerCase();e.filter(e=>!o||(String(e.id||e.episodio).includes(o)||(e.title||e.titulo||"").toLowerCase().includes(o))).forEach(e=>{const o=document.createElement("div");o.className="row";const n=e.episodio??e.id,s=e.titulo??e.title;o.innerHTML=`<div class="cell">#${n}</div><div class="cell">${s||""}</div><div class="cell"><button class="btn tiny" data-copy="/onepieceglobal/video.html?id=${n}">Copiar link</button></div>`,t.appendChild(o)});const n=e=>{e.innerHTML="",e.appendChild(new Option("",""));e.forEach;e};const s=e=>{e.innerHTML="";e.appendChild(new Option("Selecciona",""));e};const i=$("#edit-select");const a=$("#del-select");i.innerHTML="";a.innerHTML="";e.forEach(e=>{const t=document.createElement("option");t.value=String(e.episodio??e.id),t.textContent=`${e.episodio??e.id} - ${(e.titulo??e.title)||""}`,i.appendChild(t);const o=t.cloneNode(!0);a.appendChild(o)})}async function publicar(){const e=toAdminPayload("pub");try{const t=await fetchJSON(API_URL+"/api/admin/episodes",{method:"POST",headers:authHeaders(),body:JSON.stringify(e)});setMsg($("#pubMsg"),"Publicado ID "+(t.id||t.episodio),!0),await recargarListas()}catch(e){setMsg($("#pubMsg"),e.message)}}async function cargarSeleccionParaEditar(){const e=$("#edit-select").value;if(!e){setMsg($("#editMsg"),"Selecciona un episodio");return}const t=await getPublicEpisodes(),o=t.find(t=>String(t.episodio??t.id)===String(e));if(!o){setMsg($("#editMsg"),"No encontrado");return}$("#edit-episodio").value=o.episodio??o.id??"",$("#edit-titulo").value=o.titulo??o.title??"",$("#edit-fecha").value=o.fecha??"",$("#edit-embed").value=o.embed??"",$("#edit-dl1080").value=o.dl1080??"",$("#edit-dl720").value=o.dl720??"",$("#edit-dl480").value=o.dl480??"",setMsg($("#editMsg"),"")}async function guardarEdicion(){const e=$("#edit-select").value;if(!e){setMsg($("#editMsg"),"Selecciona un episodio");return}const t=toAdminPayload("edit");try{await fetchJSON(API_URL+"/api/admin/episodes/"+encodeURIComponent(e),{method:"PUT",headers:authHeaders(),body:JSON.stringify(t)}),setMsg($("#editMsg"),"Guardado",!0),await recargarListas()}catch(e){setMsg($("#editMsg"),e.message)}}async function eliminar(){const e=$("#del-select").value;if(!e){setMsg($("#delMsg"),"Selecciona un episodio");return}if(!confirm("¿Eliminar episodio "+e+"?"))return;const t=$("#del-apikey").value.trim(),o=authHeaders();t&&(o["X-API-SECRET"]=t);try{await fetchJSON(API_URL+"/api/admin/episodes/"+encodeURIComponent(e),{method:"DELETE",headers:o}),setMsg($("#delMsg"),"Eliminado",!0),await recargarListas()}catch(e){setMsg($("#delMsg"),e.message)}}function bindListActions(){$("#btnRecargar").addEventListener("click",recargarListas),$("#q").addEventListener("input",recargarListas),$("#list").addEventListener("click",e=>{const t=e.target.closest("[data-copy]");if(!t)return;const o=t.getAttribute("data-copy"),n=location.origin+o;navigator.clipboard.writeText(n).then(()=>{t.textContent="Copiado",setTimeout(()=>t.textContent="Copiar link",1e3)})})}function bindImportar(){$("#btnEjemplo").addEventListener("click",()=>{$("#jsonInput").value=JSON.stringify([{episodio:3,titulo:"Ejemplo",fecha:"2025-08-16",embed:"",dl1080:"",dl720:"",dl480:""}],null,2)}),$("#btnImportar").addEventListener("click",async()=>{try{const e=JSON.parse($("#jsonInput").value);if(!Array.isArray(e)||!e.length)throw new Error("JSON inválido");for(const t of e)await fetchJSON(API_URL+"/api/admin/episodes",{method:"POST",headers:authHeaders(),body:JSON.stringify(t)});setMsg($("#impMsg"),"Importado",!0),$("#jsonInput").value="",await recargarListas()}catch(e){setMsg($("#impMsg"),e.message)}})}function bindUI(){bindTabs(),bindListActions(),bindImportar(),$("#btnLogin").addEventListener("click",login),$("#btnLogout").addEventListener("click",clearToken),$("#btnPublicar").addEventListener("click",publicar),$("#edit-select").addEventListener("change",cargarSeleccionParaEditar),$("#btnGuardar").addEventListener("click",guardarEdicion),$("#btnEliminar").addEventListener("click",eliminar)}function init(){loadToken(),bindUI(),recargarListas().catch(()=>{})}init();
+const API_URL = "https://opapi.onrender.com";
+
+const $$ = (sel, p = document) => Array.from(p.querySelectorAll(sel));
+const $ = (sel, p = document) => p.querySelector(sel);
+
+let TOKEN = null;
+let TOKEN_EXP = null;
+
+function setToken(tok, expSec = 24 * 3600) {
+  TOKEN = tok;
+  TOKEN_EXP = Date.now() + expSec * 1000;
+  localStorage.setItem("opg_jwt", tok);
+  localStorage.setItem("opg_jwt_exp", String(TOKEN_EXP));
+  updateAuthUI();
+}
+
+function loadToken() {
+  TOKEN = localStorage.getItem("opg_jwt");
+  TOKEN_EXP = Number(localStorage.getItem("opg_jwt_exp") || 0);
+  if (!TOKEN || !TOKEN_EXP || Date.now() > TOKEN_EXP) {
+    clearToken();
+    return;
+  }
+  updateAuthUI();
+}
+
+function clearToken() {
+  TOKEN = null;
+  TOKEN_EXP = null;
+  localStorage.removeItem("opg_jwt");
+  localStorage.removeItem("opg_jwt_exp");
+  updateAuthUI();
+}
+
+function authHeaders(extra = {}) {
+  const h = { "Content-Type": "application/json" };
+  if (TOKEN) h["Authorization"] = "Bearer " + TOKEN;
+  return { ...h, ...extra };
+}
+
+function setMsg(el, text, ok = false) {
+  if (!el) return;
+  el.textContent = text || "";
+  el.style.color = ok ? "#3fb950" : text ? "#f85149" : "";
+}
+
+function updateAuthUI() {
+  const chip = $("#tokenInfo");
+  const boxLogin = $("#loginBox");
+  const blockTabs = $("#tabs");
+  const btnLogout = $("#btnLogout");
+
+  if (!chip || !boxLogin || !blockTabs || !btnLogout) return;
+
+  if (TOKEN) {
+    const remaining = Math.max(0, Math.floor((TOKEN_EXP - Date.now()) / 1000));
+    const h = Math.floor(remaining / 3600);
+    const m = Math.floor((remaining % 3600) / 60);
+    chip.textContent = `Autenticado · expira en ${h}h ${m}m`;
+    chip.classList.add("ok");
+    btnLogout.classList.remove("hidden");
+    boxLogin.classList.add("hidden");
+    blockTabs.classList.remove("hidden");
+  } else {
+    chip.textContent = "No autenticado";
+    chip.classList.remove("ok");
+    btnLogout.classList.add("hidden");
+    boxLogin.classList.remove("hidden");
+    blockTabs.classList.add("hidden");
+  }
+}
+
+async function fetchJSON(url, opts = {}) {
+  const r = await fetch(url, opts);
+  const isJson = r.headers.get("content-type")?.includes("application/json");
+  const data = isJson ? await r.json().catch(() => ({})) : null;
+  if (!r.ok) throw new Error((data && data.error) || `HTTP ${r.status}`);
+  return data;
+}
+
+async function login() {
+  const pwd = $("#password")?.value || "";
+  const out = $("#loginMsg");
+  try {
+    const data = await fetchJSON(API_URL + "/api/admin/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: pwd }),
+    });
+    setToken(data.token, data.expires_in || 86400);
+    setMsg(out, "OK", true);
+    await recargarListas();
+  } catch (e) {
+    setMsg(out, e.message);
+  }
+}
+
+async function getPublicEpisodes() {
+  const j = await fetchJSON(API_URL + "/api/episodes");
+  return j.items || [];
+}
+
+function toAdminPayload(prefix) {
+  const get = (id) => $("#" + prefix + id)?.value.trim() || "";
+  return {
+    episodio: get("-episodio"),
+    titulo: get("-titulo"),
+    fecha: get("-fecha"),
+    embed: get("-embed"),
+    dl1080: get("-dl1080"),
+    dl720: get("-dl720"),
+    dl480: get("-dl480"),
+  };
+}
+
+async function recargarListas() {
+  const list = await getPublicEpisodes();
+
+  const cont = $("#list");
+  if (cont) {
+    cont.innerHTML = "";
+    const term = ($("#q")?.value || "").trim().toLowerCase();
+    list
+      .filter((e) => {
+        const id = String(e.episodio ?? e.id);
+        const title = (e.titulo ?? e.title ?? "").toLowerCase();
+        return !term || id.includes(term) || title.includes(term);
+      })
+      .forEach((e) => {
+        const row = document.createElement("div");
+        row.className = "row";
+        const id = e.episodio ?? e.id;
+        const title = e.titulo ?? e.title ?? "";
+        row.innerHTML = `<div class="cell">#${id}</div><div class="cell">${title}</div>
+          <div class="cell">
+            <button class="btn tiny" data-copy="/onepieceglobal/video.html?id=${id}">Copiar link</button>
+          </div>`;
+        cont.appendChild(row);
+      });
+  }
+
+  const selEdit = $("#edit-select");
+  const selDel = $("#del-select");
+  if (selEdit && selDel) {
+    selEdit.innerHTML = "";
+    selDel.innerHTML = "";
+    selEdit.appendChild(new Option("Selecciona", ""));
+    selDel.appendChild(new Option("Selecciona", ""));
+    list.forEach((e) => {
+      const text = `${e.episodio ?? e.id} - ${(e.titulo ?? e.title) || ""}`;
+      const opt1 = new Option(text, String(e.episodio ?? e.id));
+      const opt2 = new Option(text, String(e.episodio ?? e.id));
+      selEdit.appendChild(opt1);
+      selDel.appendChild(opt2);
+    });
+  }
+}
+
+async function publicar() {
+  const msg = $("#pubMsg");
+  try {
+    const payload = toAdminPayload("pub");
+    const data = await fetchJSON(API_URL + "/api/admin/episodes", {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify(payload),
+    });
+    setMsg(msg, "Publicado ID " + (data.id || data.episodio), true);
+    await recargarListas();
+  } catch (e) {
+    setMsg(msg, e.message);
+  }
+}
+
+async function cargarSeleccionParaEditar() {
+  const sel = $("#edit-select")?.value;
+  const msg = $("#editMsg");
+  if (!sel) {
+    setMsg(msg, "Selecciona un episodio");
+    return;
+  }
+  const list = await getPublicEpisodes();
+  const ep = list.find((e) => String(e.episodio ?? e.id) === String(sel));
+  if (!ep) {
+    setMsg(msg, "No encontrado");
+    return;
+  }
+  const set = (id, v) => { const el = $("#edit" + id); if (el) el.value = v || ""; };
+  ($("#edit-episodio") || {}).value = ep.episodio ?? ep.id ?? "";
+  ($("#edit-titulo") || {}).value = ep.titulo ?? ep.title ?? "";
+  ($("#edit-fecha") || {}).value = ep.fecha ?? "";
+  ($("#edit-embed") || {}).value = ep.embed ?? "";
+  ($("#edit-dl1080") || {}).value = ep.dl1080 ?? "";
+  ($("#edit-dl720") || {}).value = ep.dl720 ?? "";
+  ($("#edit-dl480") || {}).value = ep.dl480 ?? "";
+  setMsg(msg, "");
+}
+
+async function guardarEdicion() {
+  const sel = $("#edit-select")?.value;
+  const msg = $("#editMsg");
+  if (!sel) {
+    setMsg(msg, "Selecciona un episodio");
+    return;
+  }
+  try {
+    const payload = toAdminPayload("edit");
+    await fetchJSON(API_URL + "/api/admin/episodes/" + encodeURIComponent(sel), {
+      method: "PUT",
+      headers: authHeaders(),
+      body: JSON.stringify(payload),
+    });
+    setMsg(msg, "Guardado", true);
+    await recargarListas();
+  } catch (e) {
+    setMsg(msg, e.message);
+  }
+}
+
+async function eliminar() {
+  const sel = $("#del-select")?.value;
+  const msg = $("#delMsg");
+  if (!sel) {
+    setMsg(msg, "Selecciona un episodio");
+    return;
+  }
+  if (!confirm("¿Eliminar episodio " + sel + "?")) return;
+  const headers = authHeaders();
+  const apikey = $("#del-apikey")?.value.trim();
+  if (apikey) headers["X-API-SECRET"] = apikey;
+  try {
+    await fetchJSON(API_URL + "/api/admin/episodes/" + encodeURIComponent(sel), {
+      method: "DELETE",
+      headers,
+    });
+    setMsg(msg, "Eliminado", true);
+    await recargarListas();
+  } catch (e) {
+    setMsg(msg, e.message);
+  }
+}
+
+function bindTabs() {
+  $$(".tab").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      $$(".tab").forEach((b) => b.classList.remove("active"));
+      $$(".tabpane").forEach((p) => p.classList.add("hidden"));
+      btn.classList.add("active");
+      const pane = $("#" + btn.dataset.tab);
+      if (pane) pane.classList.remove("hidden");
+    });
+  });
+}
+
+function bindListActions() {
+  $("#btnRecargar")?.addEventListener("click", recargarListas);
+  $("#q")?.addEventListener("input", recargarListas);
+  $("#list")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-copy]");
+    if (!btn) return;
+    const path = btn.getAttribute("data-copy");
+    const url = location.origin + path;
+    navigator.clipboard.writeText(url).then(() => {
+      const prev = btn.textContent;
+      btn.textContent = "Copiado";
+      setTimeout(() => (btn.textContent = prev), 1000);
+    });
+  });
+}
+
+function bindUI() {
+  bindTabs();
+  bindListActions();
+  $("#btnLogin")?.addEventListener("click", login);
+  $("#btnLogout")?.addEventListener("click", clearToken);
+  $("#btnPublicar")?.addEventListener("click", publicar);
+  $("#edit-select")?.addEventListener("change", cargarSeleccionParaEditar);
+  $("#btnGuardar")?.addEventListener("click", guardarEdicion);
+  $("#btnEliminar")?.addEventListener("click", eliminar);
+}
+
+async function init() {
+  loadToken();
+  bindUI();
+  try { await recargarListas(); } catch {}
+}
+
+window.addEventListener("DOMContentLoaded", init);

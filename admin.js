@@ -1,4 +1,3 @@
-const API_URL="https://opapi.onrender.com";
 let ADMIN_TOKEN=null,ADMIN_EXP=0,EXP_TIMER=null;
 const loader=document.getElementById("loader");
 function showLoader(){if(loader)loader.style.display="block"}function hideLoader(){if(loader)loader.style.display="none"}

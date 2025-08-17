@@ -4,42 +4,90 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Panel Admin</title>
-  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./admin.css" />
 </head>
 <body>
   <header class="topbar">
-    <a href="./index.html" class="back">← Catálogo</a>
     <h1>Panel de Administración</h1>
-    <div style="margin-left:auto;display:flex;gap:.5rem;align-items:center">
-      <span id="status" class="chip">No autenticado</span>
-      <button id="logout" class="btn" style="display:none">Salir</button>
+    <div class="right">
+      <span id="tokenInfo" class="chip">No autenticado</span>
+      <button id="btnLogout" class="btn secondary hidden">Salir</button>
     </div>
   </header>
-  <main class="player" style="max-width:720px;margin-inline:auto">
-    <section class="card" style="padding:1rem">
-      <h2 style="margin:.2rem 0 1rem 0">Iniciar sesión</h2>
-      <div style="display:grid;gap:.6rem">
-        <input id="password" type="password" placeholder="Contraseña de administrador" />
-        <button id="login" class="btn">Entrar</button>
-        <p id="loginMsg" style="color:#fca5a5;margin:0"></p>
+  <main class="wrap">
+    <section id="loginBox" class="card">
+      <h2>Iniciar sesión</h2>
+      <div class="grid">
+        <input id="password" type="password" placeholder="Contraseña admin" />
+        <button id="btnLogin" class="btn">Entrar</button>
       </div>
+      <p id="loginMsg" class="msg"></p>
     </section>
-    <section class="card" style="padding:1rem">
-      <h2 style="margin:.2rem 0 1rem 0">Crear episodio</h2>
-      <div style="display:grid;gap:.6rem">
-        <input id="title" placeholder="Título del episodio" />
-        <input id="qualities" placeholder="Calidades separadas por coma (ej: 1080p,720p,480p)" />
-        <button id="create" class="btn">Crear</button>
-        <p id="createMsg" style="color:#93c5fd;margin:0"></p>
-      </div>
-    </section>
-    <section class="card" style="padding:1rem">
-      <h2 style="margin:.2rem 0 1rem 0">Quién soy</h2>
-      <button id="whoami" class="btn">Consultar</button>
-      <pre id="whoamiOut" style="white-space:pre-wrap"></pre>
+    <section id="tabs" class="tabs hidden">
+      <nav class="tabbar">
+        <button data-tab="tab-publicar" class="tab active">Publicar</button>
+        <button data-tab="tab-editar" class="tab">Editar</button>
+        <button data-tab="tab-eliminar" class="tab">Eliminar</button>
+        <button data-tab="tab-listar" class="tab">Listar/Buscar</button>
+        <button data-tab="tab-importar" class="tab">Importar JSON</button>
+      </nav>
+      <section id="tab-publicar" class="card tabpane">
+        <h3>Publicar episodio</h3>
+        <div class="grid">
+          <input id="pub-episodio" placeholder="N° episodio" />
+          <input id="pub-titulo" placeholder="Título" />
+          <input id="pub-fecha" placeholder="Fecha (YYYY-MM-DD)" />
+          <input id="pub-embed" placeholder="Embed ID o URL" />
+          <input id="pub-dl1080" placeholder="Enlace 1080p (opcional)" />
+          <input id="pub-dl720" placeholder="Enlace 720p (opcional)" />
+          <input id="pub-dl480" placeholder="Enlace 480p (opcional)" />
+          <button id="btnPublicar" class="btn">Publicar</button>
+        </div>
+        <p id="pubMsg" class="msg"></p>
+      </section>
+      <section id="tab-editar" class="card tabpane hidden">
+        <h3>Editar episodio</h3>
+        <div class="grid">
+          <select id="edit-select"></select>
+          <input id="edit-episodio" placeholder="N° episodio" />
+          <input id="edit-titulo" placeholder="Título" />
+          <input id="edit-fecha" placeholder="Fecha (YYYY-MM-DD)" />
+          <input id="edit-embed" placeholder="Embed ID o URL" />
+          <input id="edit-dl1080" placeholder="Enlace 1080p (opcional)" />
+          <input id="edit-dl720" placeholder="Enlace 720p (opcional)" />
+          <input id="edit-dl480" placeholder="Enlace 480p (opcional)" />
+          <button id="btnGuardar" class="btn">Guardar</button>
+        </div>
+        <p id="editMsg" class="msg"></p>
+      </section>
+      <section id="tab-eliminar" class="card tabpane hidden">
+        <h3>Eliminar episodio</h3>
+        <div class="grid">
+          <select id="del-select"></select>
+          <input id="del-apikey" type="password" placeholder="API_SECRET (opcional si tu API lo requiere)" />
+          <button id="btnEliminar" class="btn danger">Eliminar</button>
+        </div>
+        <p id="delMsg" class="msg"></p>
+      </section>
+      <section id="tab-listar" class="card tabpane hidden">
+        <h3>Listar / Buscar</h3>
+        <div class="grid">
+          <input id="q" placeholder="Buscar por título o número" />
+          <button id="btnRecargar" class="btn secondary">Recargar</button>
+        </div>
+        <div id="list" class="list"></div>
+      </section>
+      <section id="tab-importar" class="card tabpane hidden">
+        <h3>Importar JSON (lote)</h3>
+        <textarea id="jsonInput" placeholder='[{"episodio":1,"titulo":"...","fecha":"YYYY-MM-DD","embed":"...","dl1080":"","dl720":"","dl480":""}]'></textarea>
+        <div class="grid">
+          <button id="btnImportar" class="btn">Importar</button>
+          <button id="btnEjemplo" class="btn secondary">Ejemplo</button>
+        </div>
+        <p id="impMsg" class="msg"></p>
+      </section>
     </section>
   </main>
-  <script src="./api.js"></script>
   <script src="./admin.js"></script>
 </body>
 </html>

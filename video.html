@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Reproductor</title>
-  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
   <header class="topbar">
@@ -13,13 +13,14 @@
   </header>
   <main class="player">
     <div class="video-box">
-      <div class="fake-video">Reproductor de video</div>
+      <div class="fake-video" id="embedBox">Reproductor de video</div>
     </div>
     <div class="downloads" id="dls"></div>
   </main>
   <script src="./api.js"></script>
   <script>
-    async function load(){const params=new URLSearchParams(location.search);const id=params.get("id");const r=await fetch(API_URL+"/api/episodes/"+id);if(!r.ok){document.getElementById("title").textContent="No encontrado";return}const ep=await r.json();document.getElementById("title").textContent="Episodio "+ep.id+": "+ep.title;const dls=document.getElementById("dls");(ep.quality||[]).forEach(q=>{const a=document.createElement("a");a.className="btn";a.textContent="Descargar "+q;a.href="#";dls.appendChild(a)})}load();
+    async function load(){const p=new URLSearchParams(location.search);const id=p.get("id");const r=await fetch(API_URL+"/api/episodes/"+id);if(!r.ok){document.getElementById("title").textContent="No encontrado";return}const ep=await r.json();document.getElementById("title").textContent="Episodio "+(ep.episodio??id)+": "+(ep.titulo||"");const dls=document.getElementById("dls");["dl1080","dl720","dl480"].forEach(k=>{if(ep[k]){const a=document.createElement("a");a.className="btn";a.textContent="Descargar "+k.replace("dl","")+"p";a.href=ep[k];dls.appendChild(a)}});const box=document.getElementById("embedBox");box.textContent="";if(ep.embed){const iframe=document.createElement("iframe");iframe.width="100%";iframe.height="360";iframe.src=ep.embed;iframe.allow="autoplay; fullscreen; picture-in-picture";iframe.frameBorder="0";box.appendChild(iframe)}}
+    load();
   </script>
 </body>
 </html>

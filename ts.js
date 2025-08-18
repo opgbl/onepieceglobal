@@ -2,10 +2,8 @@ const SITE_KEY = "0x4AAAAAABshM3tkI6jl4RQn";
 
 (function() {
   if (window.__tsGate) return;
-  let ready = false,
-    widget = null,
-    promise = null,
-    running = false;
+  let widget = null,
+    promise = null;
 
   function waitLib() {
     return new Promise((res, rej) => {
@@ -28,44 +26,52 @@ const SITE_KEY = "0x4AAAAAABshM3tkI6jl4RQn";
     }
     widget = turnstile.render(host, {
       sitekey: SITE_KEY,
-      size: "normal",
-      callback: async (token) => {
-        const r = await fetch(API_URL + "/api/verify-turnstile", {
-          method: "POST",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            token
-          })
-        });
-        ready = r.ok;
+      size: "normal", // O "invisible", según tu preferencia
+      callback: (token) => {
+        // La verificación es exitosa, pero la promesa aún debe ser resuelta
       }
     });
   }
 
   async function ensure() {
-    if (ready) return;
     if (promise) return promise;
-    promise = (async () => {
-      await waitLib();
-      mount();
-      if (running) {
-        turnstile.reset(widget);
-      }
-      running = true;
-      turnstile.execute(widget);
-      const t0 = Date.now();
-      while (!ready && Date.now() - t0 < 9000) await new Promise(r => setTimeout(r, 100));
-      if (!ready) {
+    promise = new Promise(async (resolve, reject) => {
+      try {
+        await waitLib();
+        mount();
         turnstile.reset(widget);
         turnstile.execute(widget);
-        const t1 = Date.now();
-        while (!ready && Date.now() - t1 < 6000) await new Promise(r => setTimeout(r, 100));
+
+        // Espera un tiempo prudente para la verificación
+        const t0 = Date.now();
+        while (Date.now() - t0 < 15000) { // 15 segundos para la verificación
+          // Verifica si el widget ha generado un token
+          const token = turnstile.getResponse(widget);
+          if (token) {
+            // Envía el token al servidor para verificarlo
+            const r = await fetch(API_URL + "/api/verify-turnstile", {
+              method: "POST",
+              credentials: "include",
+              headers: {
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                token
+              })
+            });
+            if (r.ok) {
+              return resolve();
+            }
+          }
+          await new Promise(r => setTimeout(r, 100));
+        }
+        reject(new Error("Turnstile failed to verify after timeout"));
+      } catch (e) {
+        reject(e);
+      } finally {
+        promise = null;
       }
-      if (!ready) throw new Error("Turnstile failed to verify");
-    })();
+    });
     return promise;
   }
   window.__tsGate = {

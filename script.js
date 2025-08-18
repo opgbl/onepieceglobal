@@ -29,10 +29,13 @@ async function fetchData(url) {
 }
 
 async function router() {
-  const path = location.pathname.split("/").filter(Boolean);
+  const params = new URLSearchParams(location.search);
+  const pathParam = params.get("path");
+  const path = pathParam ? pathParam.split("/").filter(Boolean) : location.pathname.split("/").filter(Boolean);
+  
   app.innerHTML = "";
   header.innerHTML = "";
-  
+
   const isHomePage = path.length <= 1 || path.includes("index.html");
 
   if (isHomePage) {
@@ -42,6 +45,10 @@ async function router() {
     renderEpisode(episodeId);
   } else {
     app.innerHTML = '<p class="notice">Página no encontrada.</p>';
+  }
+
+  if (pathParam) {
+    history.replaceState(null, "", location.pathname);
   }
 }
 

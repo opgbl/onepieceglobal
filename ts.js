@@ -28,7 +28,7 @@ const SITE_KEY = "0x4AAAAAABshM3tkI6jl4RQn";
     }
     widget = turnstile.render(host, {
       sitekey: SITE_KEY,
-      size: "invisible",
+      size: "normal",
       callback: async (token) => {
         const r = await fetch(API_URL + "/api/verify-turnstile", {
           method: "POST",

@@ -33,7 +33,9 @@ async function router() {
   app.innerHTML = "";
   header.innerHTML = "";
   
-  if (path.length <= 1) {
+  const isHomePage = path.length <= 1 || path.includes("index.html");
+
+  if (isHomePage) {
     renderHome();
   } else if (path[1] === "episodio" && path[2]) {
     const episodeId = path[2];

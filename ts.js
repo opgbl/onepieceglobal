@@ -5,10 +5,11 @@ const SITE_KEY = "0x4AAAAAABshM3tkI6jl4RQn";
 
   let widget = null;
   let verificationPromise = null;
+  const tsDiv = document.getElementById("ts"); 
 
   function mountWidget() {
     if (widget) return;
-    const host = document.getElementById("ts") || document.createElement("div");
+    const host = tsDiv || document.createElement("div");
     host.id = "ts";
     document.body.appendChild(host);
     
@@ -62,6 +63,9 @@ const SITE_KEY = "0x4AAAAAABshM3tkI6jl4RQn";
             });
             
             if (r.ok) {
+              if (tsDiv) {
+                tsDiv.style.display = "none";
+              }
               resolve();
             } else {
               reject(new Error("Token verification failed on server."));

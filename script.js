@@ -21,26 +21,22 @@ async function fetchData(url) {
   return data;
 }
 
-// Lógica de enrutamiento
 async function router() {
   const path = location.pathname.split("/").filter(Boolean);
   app.innerHTML = "";
   header.innerHTML = "";
-  
-  // Si la URL es la página de inicio
+
+
   if (path.length === 1 || path[1] === "index.html") {
     renderHome();
   } else if (path[1] === "episodio" && path[2]) {
-    // Si la URL es la página de un episodio
     const episodeId = path[2];
     renderEpisode(episodeId);
   } else {
-    // Página no encontrada (404)
     app.innerHTML = '<p class="notice">Página no encontrada.</p>';
   }
 }
 
-// Función para renderizar la página de inicio
 async function renderHome() {
   header.innerHTML = `
     <h1>One Piece Global</h1>
@@ -63,7 +59,6 @@ async function renderHome() {
   });
 }
 
-// Función para renderizar la cuadrícula de episodios
 function renderGrid(list, container) {
   container.innerHTML = "";
   const tpl = document.getElementById("card-tpl");
@@ -88,7 +83,6 @@ function renderGrid(list, container) {
   container.appendChild(frag);
 }
 
-// Función para renderizar la página de video
 async function renderEpisode(id) {
   header.innerHTML = `<a href="./" class="back" data-link>← Volver</a><h1 id="title">Episodio</h1>`;
   document.querySelector("[data-link]").addEventListener("click", (e) => {

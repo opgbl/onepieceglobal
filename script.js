@@ -93,7 +93,7 @@ function renderGrid(list, container) {
 }
 
 async function renderEpisode(id) {
-  header.innerHTML = `<a href="./" class="back" data-link>← Volver</a><h1 id="title">Episodio</h1>`;
+  header.innerHTML = `<a href="../" class="back" data-link>← Volver</a><h1 id="title">Episodio</h1>`;
   document.querySelector("[data-link]").addEventListener("click", (e) => {
     e.preventDefault();
     history.pushState(null, "", e.target.href);

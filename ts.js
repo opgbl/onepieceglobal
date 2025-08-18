@@ -84,14 +84,5 @@ const SITE_KEY = "0x4AAAAAABshM3tkI6jl4RQn";
     return verificationPromise;
   }
 
-  async function check() {
-    try {
-      const r = await fetch(API_URL + "/api/episodes", {credentials: "include"});
-      return r.ok;
-    } catch {
-      return false;
-    }
-  }
-
-  window.__tsGate = { ensure, check };
+  window.__tsGate = { ensure };
 })();

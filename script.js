@@ -9,25 +9,31 @@ const CACHE = {};
 async function fetchData(url) {
   if (CACHE[url]) return CACHE[url];
   showLoader();
-  const tsCheck = await window.__tsGate.check();
-  if (!tsCheck) {
-    await window.__tsGate.ensure();
+  try {
+    const r = await fetch(API_URL + url, { credentials: "include", cache: "no-store" });
+    if (r.status === 401) {
+      await window.__tsGate.ensure();
+      const retry = await fetch(API_URL + url, { credentials: "include", cache: "no-store" });
+      if (!retry.ok) throw new Error("API error on retry");
+      const data = await retry.json();
+      CACHE[url] = data;
+      return data;
+    }
+    if (!r.ok) throw new Error("API error");
+    const data = await r.json();
+    CACHE[url] = data;
+    return data;
+  } finally {
+    hideLoader();
   }
-  const r = await fetch(API_URL + url, { credentials: "include", cache: "no-store" });
-  if (!r.ok) throw new Error("API error");
-  const data = await r.json();
-  CACHE[url] = data;
-  hideLoader();
-  return data;
 }
 
 async function router() {
   const path = location.pathname.split("/").filter(Boolean);
   app.innerHTML = "";
   header.innerHTML = "";
-
-
-  if (path.length === 1 || path[1] === "index.html") {
+  
+  if (path.length <= 1) {
     renderHome();
   } else if (path[1] === "episodio" && path[2]) {
     const episodeId = path[2];
@@ -48,10 +54,11 @@ async function renderHome() {
   app.appendChild(grid);
 
   const episodes = await fetchData("/api/episodes");
-  renderGrid(episodes, grid);
+  renderGrid(episodes.items, grid);
+  
   document.getElementById("q").addEventListener("input", (e) => {
     const term = e.target.value.trim().toLowerCase();
-    const filtered = episodes.filter(ep => 
+    const filtered = episodes.items.filter(ep => 
       (ep.titulo || ep.title || "").toLowerCase().includes(term) || 
       String(ep.episodio || ep.id).includes(term)
     );

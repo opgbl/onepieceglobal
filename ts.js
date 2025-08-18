@@ -14,7 +14,7 @@ const SITE_KEY = "0x4AAAAAABshM3tkI6jl4RQn";
     
     widget = turnstile.render(host, {
       sitekey: SITE_KEY,
-      size: "normal",
+      size: "normal", 
       callback: (token) => {
       },
       "error-callback": (err) => {

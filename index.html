@@ -11,19 +11,18 @@
 </head>
 <body>
 <div id="loader"></div>
-<header class="topbar">
-  <h1>One Piece Global</h1>
-  <input id="q" placeholder="Buscar episodio..."/>
-</header>
-<main id="grid" class="grid"></main>
+<header class="topbar"></header>
+<main id="app"></main>
+
 <template id="card-tpl">
   <article class="card">
     <img class="thumb" src="assets/images/image.png" alt="">
     <h3 class="title"></h3>
     <div class="qualities"></div>
-    <a class="btn" target="_blank">Ver</a>
+    <a class="btn" data-link>Ver</a>
   </article>
 </template>
+
 <div id="ts"></div>
 <script src="script.js"></script>
 </body>

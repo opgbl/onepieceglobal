@@ -5,7 +5,7 @@ const SITE_KEY = "0x4AAAAAABshM3tkI6jl4RQn";
 
   let widget = null;
   let verificationPromise = null;
-  const tsDiv = document.getElementById("ts"); 
+  const tsDiv = document.getElementById("ts");
 
   function mountWidget() {
     if (widget) return;
@@ -15,9 +15,8 @@ const SITE_KEY = "0x4AAAAAABshM3tkI6jl4RQn";
     
     widget = turnstile.render(host, {
       sitekey: SITE_KEY,
-      size: "normal", 
-      callback: (token) => {
-      },
+      size: "normal",
+      callback: (token) => {},
       "error-callback": (err) => {
         if (verificationPromise) {
           verificationPromise.reject(new Error("Turnstile error: " + err));
@@ -41,7 +40,7 @@ const SITE_KEY = "0x4AAAAAABshM3tkI6jl4RQn";
 
   async function ensure() {
     if (verificationPromise) return verificationPromise;
-
+    
     verificationPromise = new Promise(async (resolve, reject) => {
       try {
         await waitForLib();
@@ -63,9 +62,7 @@ const SITE_KEY = "0x4AAAAAABshM3tkI6jl4RQn";
             });
             
             if (r.ok) {
-              if (tsDiv) {
-                tsDiv.style.display = "none";
-              }
+              if (tsDiv) tsDiv.style.display = "none";
               resolve();
             } else {
               reject(new Error("Token verification failed on server."));
@@ -77,7 +74,6 @@ const SITE_KEY = "0x4AAAAAABshM3tkI6jl4RQn";
           clearInterval(checkInterval);
           reject(new Error("Turnstile timeout."));
         }, 15000);
-
       } catch (e) {
         reject(e);
       } finally {
@@ -88,5 +84,14 @@ const SITE_KEY = "0x4AAAAAABshM3tkI6jl4RQn";
     return verificationPromise;
   }
 
-  window.__tsGate = { ensure };
+  async function check() {
+    try {
+      const r = await fetch(API_URL + "/api/episodes", {credentials: "include"});
+      return r.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  window.__tsGate = { ensure, check };
 })();

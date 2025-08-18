@@ -36,7 +36,7 @@ async function loadToForm(epn){const id=parseInt(epn,10);if(!id)return;const ite
 
 async function ensureAuth(){if(ADMIN_TOKEN)return true;setAuthUI(false);document.getElementById("password")?.focus();return false}
 
-async function addOrUpdate(e){e.preventDefault();if(!await ensureAuth())return;await ensureTS();const p=readForm();if(!p.episodio||!p.titulo||!p.fecha||!p.embed)return;showLoader();try{const id=p.episodio;try{await fetchJSON(API_URL+"/api/admin/episodes/"+id,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(p)},{admin:true})}catch{await fetchJSON(API_URL+"/api/admin/episodes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(p)},{admin:true})}document.getElementById("formAdd").reset();await refreshList()}finally{hideLoader()}}
+async function addOrUpdate(e){e.preventDefault();if(!await ensureAuth())return;await ensureTS();const p=readForm();if(!p.episodio||!p.titulo||!p.fecha)return;showLoader();try{const id=p.episodio;try{await fetchJSON(API_URL+"/api/admin/episodes/"+id,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(p)},{admin:true})}catch{await fetchJSON(API_URL+"/api/admin/episodes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(p)},{admin:true})}document.getElementById("formAdd").reset();await refreshList()}finally{hideLoader()}}
 
 async function delEpisode(epn){if(!await ensureAuth())return;const id=parseInt(epn,10);if(!id||isNaN(id))return;await ensureTS();showLoader();try{await fetchJSON(API_URL+"/api/admin/episodes/"+id,{method:"DELETE"},{admin:true});await refreshList()}finally{hideLoader()}}
 

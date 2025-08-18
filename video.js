@@ -18,7 +18,7 @@ async function load(){
   }
   hideLoader();
   const title=document.getElementById("title");
-  title.textContent="Episodio "+(ep.episodio??id)+": "+(ep.titulo||"");
+  title.textContent=`Episodio ${ep.episodio??id}: ${ep.titulo||""}`;
   const dls=document.getElementById("dls");
   dls.innerHTML="";
   if(ep.dl1080){const a=document.createElement("a");a.className="btn";a.textContent="Descargar 1080p";a.href=ep.dl1080;dls.appendChild(a)}

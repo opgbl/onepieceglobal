@@ -1,7 +1,6 @@
 const app = document.getElementById("app");
 const loader = document.getElementById("loader");
 const header = document.querySelector("header.topbar");
-const playerTpl = document.getElementById("player-tpl");
 
 function showLoader() { loader.style.display = "block"; }
 function hideLoader() { loader.style.display = "none"; }
@@ -35,7 +34,7 @@ async function router() {
   const pathname = pathParam || location.pathname;
   
   app.innerHTML = "";
-  document.getElementById("header-content").innerHTML = "";
+  header.innerHTML = "";
   
   if (pathname === '/onepieceglobal/' || pathname === '/onepieceglobal/index.html') {
     renderHome();
@@ -56,7 +55,7 @@ async function router() {
 }
 
 async function renderHome() {
-  document.getElementById("header-content").innerHTML = `
+  header.innerHTML = `
     <h1>One Piece Global</h1>
     <input id="q" placeholder="Buscar episodio..."/>
   `;
@@ -103,24 +102,22 @@ function renderGrid(list, container) {
 }
 
 async function renderEpisode(id) {
-  document.getElementById("header-content").innerHTML = `<a href="/onepieceglobal/" class="back" data-link>← Volver</a>`;
+  header.innerHTML = `<a href="/onepieceglobal/" class="back" data-link>← Volver</a><h1 id="title">Episodio</h1>`;
   document.querySelector("[data-link]").addEventListener("click", (e) => {
     e.preventDefault();
     history.pushState(null, "", e.target.href);
     router();
   });
   
-  const playerNode = playerTpl.content.cloneNode(true);
-  app.appendChild(playerNode);
-
+  const videoPlayer = document.createElement("div");
+  videoPlayer.className = "player";
+  videoPlayer.innerHTML = `<div class="video-box"><div id="embedBox">Cargando…</div></div><div id="dls"></div>`;
+  app.appendChild(videoPlayer);
+  
   try {
     const ep = await fetchData(`/api/episodes/${id}`);
-    const title = document.createElement("h1");
+    const title = document.getElementById("title");
     title.textContent = `Episodio ${ep.episodio ?? id}: ${ep.titulo || ""}`;
-    const backLink = document.querySelector(".back");
-    if(backLink) {
-        backLink.parentNode.insertBefore(title, backLink.nextSibling);
-    }
     
     const dls = document.getElementById("dls");
     dls.innerHTML = "";
@@ -130,27 +127,15 @@ async function renderEpisode(id) {
     
     const box = document.getElementById("embedBox");
     box.textContent = "";
-
-    const iframe = document.createElement("iframe");
-    iframe.width = "100%";
-    iframe.height = "360";
-    iframe.frameBorder = "0";
-
-    if (ep.embed && ep.embed.includes("facebook.com")) {
+    if (ep.embed) {
+      const iframe = document.createElement("iframe");
+      iframe.width = "100%";
+      iframe.height = "360";
       iframe.src = ep.embed;
-      iframe.setAttribute("allow", "autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share");
-      iframe.setAttribute("allowFullScreen", "true");
-      iframe.style.overflow = "hidden";
-      iframe.style.border = "none";
-    } else if (ep.embed) {
-      iframe.src = ep.embed;
-      iframe.setAttribute("allow", "autoplay; fullscreen; picture-in-picture");
-    } else {
-      document.querySelector(".error-player").classList.remove("hidden");
-      return;
+      iframe.allow = "autoplay; fullscreen; picture-in-picture";
+      iframe.frameBorder = "0";
+      box.appendChild(iframe);
     }
-    box.appendChild(iframe);
-
   } catch (e) {
     app.innerHTML = '<p class="notice">Episodio no encontrado.</p>';
   }

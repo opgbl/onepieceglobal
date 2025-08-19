@@ -89,13 +89,18 @@ async function login() {
 async function initTurnstileAndRefresh() {
   showLoader();
   try {
-    const tsCheck = await fetch(API_URL + "/api/episodes", { credentials: "include" });
-    if (!tsCheck.ok) {
-        await window.__tsGate.ensure();
-    }
     await refreshList();
   } catch (e) {
-    console.error("Turnstile or list refresh failed:", e);
+    if (e.message === "401") {
+      try {
+        await window.__tsGate.ensure();
+        await refreshList();
+      } catch (tsError) {
+        console.error("Turnstile verification failed:", tsError);
+      }
+    } else {
+      console.error("List refresh failed:", e);
+    }
   } finally {
     hideLoader();
   }
@@ -132,6 +137,7 @@ async function ensureAuth() {
       const r = await fetchJSON(API_URL + "/api/admin/me");
       if (r.ok) return true;
     } catch {
+      
     }
   }
   logout();

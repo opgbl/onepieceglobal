@@ -89,13 +89,11 @@ async function login() {
 async function initTurnstileAndRefresh() {
   showLoader();
   try {
-    const tsCheck = await fetch(API_URL + "/api/episodes", { credentials: "include" });
-    if (!tsCheck.ok) {
-        await window.__tsGate.ensure();
-    }
+    await window.__tsGate.ensure();
     await refreshList();
   } catch (e) {
     console.error("Turnstile or list refresh failed:", e);
+    document.getElementById("loginMsg").textContent = "Error de verificación de Turnstile.";
   } finally {
     hideLoader();
   }

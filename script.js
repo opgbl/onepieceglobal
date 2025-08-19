@@ -31,18 +31,20 @@ async function fetchData(url) {
 async function router() {
   const params = new URLSearchParams(location.search);
   const pathParam = params.get("path");
-  const path = pathParam ? pathParam.split("/").filter(Boolean) : location.pathname.split("/").filter(Boolean);
+  const pathname = pathParam || location.pathname;
   
   app.innerHTML = "";
   header.innerHTML = "";
-
-  const isHomePage = path.length <= 1 || path.includes("index.html");
-
-  if (isHomePage) {
+  
+  if (pathname === '/onepieceglobal/' || pathname === '/onepieceglobal/index.html') {
     renderHome();
-  } else if (path[1] === "episodio" && path[2]) {
-    const episodeId = path[2];
-    renderEpisode(episodeId);
+  } else if (pathname.startsWith("/onepieceglobal/episodio/") && pathname.split("/").length > 3) {
+    const episodeId = pathname.split("/").pop();
+    if (episodeId) {
+      renderEpisode(episodeId);
+    } else {
+      app.innerHTML = '<p class="notice">Página no encontrada.</p>';
+    }
   } else {
     app.innerHTML = '<p class="notice">Página no encontrada.</p>';
   }
@@ -100,7 +102,7 @@ function renderGrid(list, container) {
 }
 
 async function renderEpisode(id) {
-  header.innerHTML = `<a href="../" class="back" data-link>← Volver</a><h1 id="title">Episodio</h1>`;
+  header.innerHTML = `<a href="/onepieceglobal/" class="back" data-link>← Volver</a><h1 id="title">Episodio</h1>`;
   document.querySelector("[data-link]").addEventListener("click", (e) => {
     e.preventDefault();
     history.pushState(null, "", e.target.href);

@@ -7,6 +7,21 @@ const SITE_KEY = "0x4AAAAAABshM3tkI6jl4RQn";
   let verificationPromise = null;
   const tsDiv = document.getElementById("ts");
 
+  function showCaptchaLoader() {
+    let loader = document.getElementById("captcha-loader");
+    if (!loader) {
+      loader = document.createElement("div");
+      loader.id = "captcha-loader";
+      document.body.appendChild(loader);
+    }
+    loader.style.display = "block";
+  }
+
+  function hideCaptchaLoader() {
+    const loader = document.getElementById("captcha-loader");
+    if (loader) loader.style.display = "none";
+  }
+
   function mountWidget() {
     if (widget) return;
     const host = tsDiv || document.createElement("div");
@@ -42,6 +57,7 @@ const SITE_KEY = "0x4AAAAAABshM3tkI6jl4RQn";
     if (verificationPromise) return verificationPromise;
     
     verificationPromise = new Promise(async (resolve, reject) => {
+      showCaptchaLoader();
       try {
         await waitForLib();
         mountWidget();
@@ -77,6 +93,7 @@ const SITE_KEY = "0x4AAAAAABshM3tkI6jl4RQn";
       } catch (e) {
         reject(e);
       } finally {
+        hideCaptchaLoader();
         verificationPromise = null;
       }
     });

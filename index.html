@@ -10,20 +10,38 @@
 <script src="ts.js"></script>
 </head>
 <body>
+
 <div id="loader"></div>
-<header class="topbar"></header>
-<main id="app"></main>
+
+<header class="topbar">
+  <div id="header-content"></div>
+</header>
+
+<div id="app"></div>
 
 <template id="card-tpl">
-  <article class="card">
-    <img class="thumb" src="assets/images/image.png" alt="">
-    <h3 class="title"></h3>
-    <div class="qualities"></div>
-    <a class="btn" data-link>Ver</a>
-  </article>
+  <a class="card" data-link>
+    <div class="thumb"></div>
+    <div class="card-content">
+      <h3 class="title"></h3>
+      <div class="qualities"></div>
+      <span class="btn">Ver ahora</span>
+    </div>
+  </a>
 </template>
 
-<div id="ts"></div>
+<template id="player-tpl">
+  <div class="player">
+    <div class="video-box">
+      <div id="embedBox">Cargando...</div>
+      <div class="error-player hidden">
+        <p>No hay un reproductor disponible para este episodio.</p>
+      </div>
+    </div>
+    <div id="dls"></div>
+  </div>
+</template>
+
 <script src="script.js"></script>
 </body>
 </html>

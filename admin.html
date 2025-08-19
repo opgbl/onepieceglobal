@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Panel Admin</title>
 <link rel="stylesheet" href="admin.css"/>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 <script src="api.js"></script>
+<script src="ts.js"></script>
 </head>
 <body>
 <div id="loader"></div>
@@ -20,6 +22,7 @@
   <section id="loginBox">
     <h2>Iniciar sesión</h2>
     <input id="password" type="password" placeholder="Contraseña"/>
+    <input id="apiSecret" type="password" placeholder="Clave API" required/>
     <button id="btnLogin">Entrar</button>
     <p id="loginMsg"></p>
   </section>
@@ -36,13 +39,27 @@
       <input id="epDl1080" type="url" placeholder="Descarga 1080p"/>
       <input id="epDl720" type="url" placeholder="Descarga 720p"/>
       <input id="epDl480" type="url" placeholder="Descarga 480p"/>
-      <button type="submit">Publicar</button>
+      <button type="submit">Guardar</button>
     </form>
 
-    <h3>Episodios existentes</h3>
-    <div id="list"></div>
+    <div class="list-container">
+      <h3>Episodios publicados</h3>
+      <ul id="list"></ul>
+    </div>
   </section>
 </main>
+
+<template id="listTpl">
+  <li class="episodeRow">
+    <span class="epNum"></span>
+    <span class="epTitle"></span>
+    <span class="epDate"></span>
+    <div class="actions">
+      <button class="editBtn">Editar</button>
+      <button class="delBtn">Borrar</button>
+    </div>
+  </li>
+</template>
 
 <script src="admin.js"></script>
 </body>

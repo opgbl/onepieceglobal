@@ -1,42 +1,209 @@
-let ADMIN_TOKEN=null,ADMIN_EXP=0,EXP_TIMER=null;
-const loader=document.getElementById("loader");
-function showLoader(){if(loader)loader.style.display="block"}
-function hideLoader(){if(loader)loader.style.display="none"}
+let ADMIN_TOKEN = null, ADMIN_EXP = 0, EXP_TIMER = null, API_SECRET_KEY = null;
+const loader = document.getElementById("loader");
+function showLoader() { if (loader) loader.style.display = "block" }
+function hideLoader() { if (loader) loader.style.display = "none" }
 
-function b64url(s){return s.replace(/-/g,"+").replace(/_/g,"/")}
-function parseJWT(t){try{const p=t.split(".")[1];return JSON.parse(atob(b64url(p)))}catch{return {}}}
+function b64url(s) { return s.replace(/-/g, "+").replace(/_/g, "/") }
+function parseJWT(t) { try { const p = t.split(".")[1]; return JSON.parse(atob(b64url(p))) } catch { return {} } }
 
-function showLogin(){document.getElementById("loginBox")?.classList.remove("hidden");document.getElementById("tabs")?.classList.add("hidden")}
-function showPanel(){document.getElementById("loginBox")?.classList.add("hidden");document.getElementById("tabs")?.classList.remove("hidden")}
-function setAuthUI(on){const ti=document.getElementById("tokenInfo");if(ti)ti.textContent=on?"Sesión activa":"No autenticado";const out=document.getElementById("btnLogout");if(out)out.classList.toggle("hidden",!on);on?showPanel():showLogin()}
+function showLogin() { document.getElementById("loginBox")?.classList.remove("hidden"); document.getElementById("tabs")?.classList.add("hidden") }
+function showPanel() { document.getElementById("loginBox")?.classList.add("hidden"); document.getElementById("tabs")?.classList.remove("hidden") }
+function setAuthUI(on) { const ti = document.getElementById("tokenInfo"); if (ti) ti.textContent = on ? "Sesión activa" : "No autenticado"; const out = document.getElementById("btnLogout"); if (out) out.classList.toggle("hidden", !on); on ? showPanel() : showLogin() }
 
-function clearTimer(){if(EXP_TIMER){clearTimeout(EXP_TIMER);EXP_TIMER=null}}
-function scheduleExpiry(){clearTimer();const ms=Math.max(0,(ADMIN_EXP*1000)-Date.now());EXP_TIMER=setTimeout(()=>logout(),ms)}
-function saveToken(t){const d=parseJWT(t);ADMIN_TOKEN=t;ADMIN_EXP=d.exp||0;localStorage.setItem("admin_token",t);scheduleExpiry();setAuthUI(true)}
-function loadToken(){const t=localStorage.getItem("admin_token");if(!t){setAuthUI(false);return}const d=parseJWT(t);if((d.exp||0)*1000>Date.now()){ADMIN_TOKEN=t;ADMIN_EXP=d.exp||0;scheduleExpiry();setAuthUI(true)}else{localStorage.removeItem("admin_token");setAuthUI(false)}}
-function logout(){ADMIN_TOKEN=null;ADMIN_EXP=0;localStorage.removeItem("admin_token");clearTimer();setAuthUI(false)}
+function clearTimer() { if (EXP_TIMER) { clearTimeout(EXP_TIMER); EXP_TIMER = null } }
+function scheduleExpiry() { clearTimer(); const ms = Math.max(0, (ADMIN_EXP * 1000) - Date.now()); EXP_TIMER = setTimeout(() => logout(), ms) }
+function saveToken(t) { const d = parseJWT(t); ADMIN_TOKEN = t; ADMIN_EXP = d.exp || 0; localStorage.setItem("admin_token", t); setAuthUI(true); scheduleExpiry() }
+function loadToken() { const t = localStorage.getItem("admin_token"); if (!t) { logout(); return false } const d = parseJWT(t); if (d.exp && d.exp * 1000 < Date.now()) { logout(); return false } ADMIN_TOKEN = t; ADMIN_EXP = d.exp || 0; setAuthUI(true); scheduleExpiry(); return true }
+function logout() { ADMIN_TOKEN = null; ADMIN_EXP = 0; localStorage.removeItem("admin_token"); setAuthUI(false); clearTimer() }
 
+async function fetchJSON(url, options = {}, { admin = false } = {}) {
+  const headers = { ...options.headers };
+  if (admin && ADMIN_TOKEN) {
+    headers["Authorization"] = `Bearer ${ADMIN_TOKEN}`;
+  }
+  if (admin && API_SECRET_KEY) {
+    headers["X-API-Key"] = API_SECRET_KEY;
+  }
 
-async function fetchJSON(url,opts={},opt2={}){const admin=!!opt2.admin;const h=Object.assign({},opts.headers||{});if(admin&&ADMIN_TOKEN)h.Authorization="Bearer "+ADMIN_TOKEN;const r=await fetch(url,Object.assign({credentials:"include",headers:h},opts));if(r.status===401&&admin){setAuthUI(false);throw new Error("401")}if(!r.ok)throw new Error(String(r.status));const ct=r.headers.get("content-type")||"";return ct.includes("application/json")?r.json():r.text()}
+  const r = await fetch(url, { ...options, headers });
+  if (!r.ok) {
+    const errorBody = await r.text();
+    console.error(`Error ${r.status}: ${errorBody}`);
+    if (r.status === 401 && admin) {
+      logout();
+    }
+    throw new Error(r.status);
+  }
 
-async function login(){const pwd=document.getElementById("password").value||"";if(!pwd)return;showLoader();try{const data=await fetchJSON(API_URL+"/api/admin/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:pwd})},{admin:true});saveToken(data.token)}catch(e){const m=document.getElementById("loginMsg");if(m)m.textContent="Error de login"}hideLoader()}
+  try {
+    return await r.json();
+  } catch {
+    return {};
+  }
+}
 
-async function listarPublic(){showLoader();try{const res=await fetchJSON(API_URL+"/api/episodes",{method:"GET"},{admin:false});return res.items||[]}finally{hideLoader()}}
+async function login() {
+  const pass = document.getElementById("password")?.value;
+  const apiSecret = document.getElementById("apiSecret")?.value;
+  if (!pass || !apiSecret) return;
+  API_SECRET_KEY = apiSecret;
+  showLoader();
+  try {
+    const res = await fetchJSON(API_URL + "/api/admin/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: pass })
+    }, { admin: true });
+    saveToken(res.token);
+    await refreshList();
+  } catch (e) {
+    document.getElementById("loginMsg").textContent = "Error de autenticación.";
+  } finally {
+    hideLoader();
+  }
+}
 
-function renderEpisodes(list){const c=document.getElementById("list");if(!c)return;c.innerHTML="";const f=document.createDocumentFragment();list.forEach(ep=>{const n=ep.episodio??ep.id;const t=ep.titulo??ep.title??"";const row=document.createElement("div");row.className="episodeRow";row.dataset.episodio=String(n);row.innerHTML=`<span>#${n} - ${t}</span><div class="actions"><button class="editBtn">Editar</button><button class="delBtn">Eliminar</button></div>`;f.appendChild(row)});c.appendChild(f)}
+async function refreshList() {
+  if (!API_SECRET_KEY) {
+    showLogin();
+    return;
+  }
+  await ensureAuth();
+  await ensureTS();
+  showLoader();
+  try {
+    const r = await fetchJSON(API_URL + "/api/episodes", { admin: true });
+    const list = document.getElementById("list");
+    if (!list) return;
+    list.innerHTML = "";
+    const tpl = document.getElementById("listTpl");
+    for (const ep of r.items) {
+      const row = tpl.content.cloneNode(true);
+      const rowElem = row.querySelector(".episodeRow");
+      rowElem.dataset.id = ep.episodio;
+      row.querySelector(".epNum").textContent = ep.episodio;
+      row.querySelector(".epTitle").textContent = ep.titulo;
+      row.querySelector(".epDate").textContent = ep.fecha;
+      row.querySelector(".editBtn").addEventListener("click", () => editEpisode(ep.episodio));
+      row.querySelector(".delBtn").addEventListener("click", () => delEpisode(ep.episodio));
+      list.appendChild(row);
+    }
+  } finally {
+    hideLoader();
+  }
+}
 
-async function refreshList(){const items=await listarPublic();renderEpisodes(items)}
+async function ensureTS() {
+  const tsCheck = await fetch(API_URL + "/api/episodes", { credentials: "include", headers: { "X-API-Key": API_SECRET_KEY } });
+  if (!tsCheck.ok) {
+    await window.__tsGate.ensure();
+  }
+}
 
-function readForm(){const n=parseInt(document.getElementById("epNum").value,10);return{episodio:isNaN(n)?undefined:n,titulo:document.getElementById("epTitle").value||"",fecha:document.getElementById("epDate").value||"",embed:document.getElementById("epEmbed").value||"",dl1080:document.getElementById("epDl1080").value||"",dl720:document.getElementById("epDl720").value||"",dl480:document.getElementById("epDl480").value||""}}
+async function ensureAuth() {
+  if (ADMIN_TOKEN) {
+    const r = await fetchJSON(API_URL + "/api/admin/me", { admin: true });
+    if (r.ok) return true;
+  }
+  logout();
+  return false;
+}
 
-function writeForm(ep){document.getElementById("epNum").value=ep.episodio??ep.id??"";document.getElementById("epTitle").value=ep.titulo??ep.title??"";document.getElementById("epDate").value=ep.fecha??"";document.getElementById("epEmbed").value=ep.embed??"";document.getElementById("epDl1080").value=ep.dl1080??"";document.getElementById("epDl720").value=ep.dl720??"";document.getElementById("epDl480").value=ep.dl480??""}
+function readForm() {
+  return {
+    episodio: parseInt(document.getElementById("epNum")?.value, 10),
+    titulo: document.getElementById("epTitle")?.value,
+    fecha: document.getElementById("epDate")?.value,
+    embed: document.getElementById("epEmbed")?.value,
+    dl1080: document.getElementById("epDl1080")?.value,
+    dl720: document.getElementById("epDl720")?.value,
+    dl480: document.getElementById("epDl480")?.value
+  };
+}
 
-async function loadToForm(epn){const id=parseInt(epn,10);if(!id)return;const items=await listarPublic();const ep=items.find(x=>(x.episodio??x.id)===id);if(ep)writeForm(ep)}
+function fillForm(p) {
+  document.getElementById("epNum").value = p.episodio;
+  document.getElementById("epTitle").value = p.titulo;
+  document.getElementById("epDate").value = p.fecha;
+  document.getElementById("epEmbed").value = p.embed;
+  document.getElementById("epDl1080").value = p.dl1080 || "";
+  document.getElementById("epDl720").value = p.dl720 || "";
+  document.getElementById("epDl480").value = p.dl480 || "";
+}
 
-async function ensureAuth(){if(ADMIN_TOKEN)return true;setAuthUI(false);document.getElementById("password")?.focus();return false}
+async function editEpisode(id) {
+  if (!await ensureAuth()) return;
+  await ensureTS();
+  showLoader();
+  try {
+    const ep = await fetchJSON(API_URL + "/api/episodes/" + id, { admin: true });
+    fillForm(ep);
+    document.getElementById("epNum").disabled = true;
+  } finally {
+    hideLoader();
+  }
+}
 
-async function addOrUpdate(e){e.preventDefault();if(!await ensureAuth())return;const p=readForm();if(!p.episodio||!p.titulo||!p.fecha)return;showLoader();try{const id=p.episodio;try{await fetchJSON(API_URL+"/api/admin/episodes/"+id,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(p)},{admin:true})}catch{await fetchJSON(API_URL+"/api/admin/episodes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(p)},{admin:true})}document.getElementById("formAdd").reset();await refreshList()}finally{hideLoader()}}
+async function addOrUpdate(e) {
+  e.preventDefault();
+  if (!await ensureAuth()) return;
+  await ensureTS();
+  const p = readForm();
+  if (!p.episodio || !p.titulo || !p.fecha) return;
+  showLoader();
+  try {
+    const id = p.episodio;
+    const method = document.getElementById("epNum").disabled ? "PUT" : "POST";
+    const url = method === "PUT" ? `/api/admin/episodes/${id}` : `/api/admin/episodes`;
+    await fetchJSON(API_URL + url, {
+      method: method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(p)
+    }, { admin: true });
+    
+    document.getElementById("formAdd").reset();
+    document.getElementById("epNum").disabled = false;
+    await refreshList();
+  } finally {
+    hideLoader();
+  }
+}
 
-async function delEpisode(epn){if(!await ensureAuth())return;const id=parseInt(epn,10);if(!id||isNaN(id))return;showLoader();try{await fetchJSON(API_URL+"/api/admin/episodes/"+id,{method:"DELETE"},{admin:true});await refreshList()}finally{hideLoader()}}
+async function delEpisode(epn) {
+  if (!await ensureAuth()) return;
+  const id = parseInt(epn, 10);
+  if (!id || isNaN(id)) return;
+  await ensureTS();
+  showLoader();
+  try {
+    await fetchJSON(API_URL + "/api/admin/episodes/" + id, {
+      method: "DELETE"
+    }, { admin: true });
+    await refreshList();
+  } finally {
+    hideLoader();
+  }
+}
 
-document.addEventListener("DOMContentLoaded",()=>{loadToken();document.getElementById("btnLogin")?.addEventListener("click",login);document.getElementById("btnLogout")?.addEventListener("click",logout);document.getElementById("formAdd")?.addEventListener("submit",addOrUpdate);const list=document.getElementById("list");if(list){list.addEventListener("click",e=>{const btn=e.target.closest("button");if(!btn)return;const row=btn.closest(".episodeRow");const epn=row?row.dataset.episodio:null;if(btn.classList.contains("delBtn"))delEpisode(epn);else if(btn.classList.contains("editBtn"))loadToForm(epn)})}refreshList()});
+document.addEventListener("DOMContentLoaded", () => {
+  loadToken();
+  document.getElementById("btnLogin")?.addEventListener("click", login);
+  document.getElementById("btnLogout")?.addEventListener("click", logout);
+  document.getElementById("formAdd")?.addEventListener("submit", addOrUpdate);
+  const list = document.getElementById("list");
+  if (list) {
+    list.addEventListener("click", e => {
+      const btn = e.target.closest("button");
+      if (!btn) return;
+      const row = btn.closest(".episodeRow");
+      const epn = row?.dataset.id;
+      if (!epn) return;
+      if (btn.classList.contains("editBtn")) {
+        editEpisode(epn);
+      } else if (btn.classList.contains("delBtn")) {
+        delEpisode(epn);
+      }
+    });
+    refreshList();
+  }
+});

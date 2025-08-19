@@ -78,9 +78,24 @@ async function login() {
       body: JSON.stringify({ password: pass })
     });
     saveToken(res.token);
-    await refreshList();
+    await initTurnstileAndRefresh();
   } catch (e) {
     document.getElementById("loginMsg").textContent = "Error de autenticación. Verifique sus credenciales y la clave API.";
+  } finally {
+    hideLoader();
+  }
+}
+
+async function initTurnstileAndRefresh() {
+  showLoader();
+  try {
+    const tsCheck = await fetch(API_URL + "/api/episodes", { credentials: "include" });
+    if (!tsCheck.ok) {
+        await window.__tsGate.ensure();
+    }
+    await refreshList();
+  } catch (e) {
+    console.error("Turnstile or list refresh failed:", e);
   } finally {
     hideLoader();
   }
@@ -111,20 +126,12 @@ async function refreshList() {
   }
 }
 
-async function ensureTS() {
-  const tsCheck = await fetch(API_URL + "/api/episodes", { credentials: "include", headers: { "X-API-Key": API_SECRET_KEY } });
-  if (!tsCheck.ok) {
-    await window.__tsGate.ensure();
-  }
-}
-
 async function ensureAuth() {
   if (ADMIN_TOKEN) {
     try {
       const r = await fetchJSON(API_URL + "/api/admin/me");
       if (r.ok) return true;
     } catch {
-      // Fall through to logout
     }
   }
   logout();
@@ -208,7 +215,7 @@ document.addEventListener("DOMContentLoaded", () => {
   loadApiSecret();
   loadToken();
   if (ADMIN_TOKEN) {
-    refreshList();
+    initTurnstileAndRefresh();
   }
   document.getElementById("btnLogin")?.addEventListener("click", login);
   document.getElementById("btnLogout")?.addEventListener("click", logout);

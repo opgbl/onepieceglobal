@@ -1,1 +1,15 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>404</title><link rel="stylesheet" href="css/style.css"/></head><body><main class="player"><p class="notice">Página no encontrada.</p></main></body></html>
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Cargando...</title>
+  <script>
+    (function() {
+      const path = location.pathname.substring(1).replace(/\/$/, '');
+      const param = path ? `?path=${encodeURIComponent(path)}` : '';
+      location.replace(`/onepieceglobal/${param}`);
+    })();
+  </script>
+</head>
+<body></body>
+</html>

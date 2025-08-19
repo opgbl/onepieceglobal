@@ -1,1 +1,29 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>One Piece Global Capítulos</title><link rel="stylesheet" href="css/style.css"/><script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script><script src="js/api.js"></script><script src="js/ts.js"></script></head><body><div id="loader"></div><header class="topbar"><h1>One Piece Global</h1><input id="search" type="search" placeholder="Buscar capítulo..."/></header><main><div id="grid" class="grid"></div></main><div id="ts" class="hidden"></div><script src="js/index.js"></script></body></html>
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>One Piece Global</title>
+<link rel="stylesheet" href="style.css"/>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+<script src="api.js"></script>
+<script src="ts.js"></script>
+</head>
+<body>
+<div id="loader"></div>
+<header class="topbar"></header>
+<main id="app"></main>
+
+<template id="card-tpl">
+  <article class="card">
+    <img class="thumb" src="assets/images/image.png" alt="">
+    <h3 class="title"></h3>
+    <div class="qualities"></div>
+    <a class="btn" data-link>Ver</a>
+  </article>
+</template>
+
+<div id="ts"></div>
+<script src="script.js"></script>
+</body>
+</html>

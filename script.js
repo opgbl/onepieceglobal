@@ -127,15 +127,31 @@ async function renderEpisode(id) {
     
     const box = document.getElementById("embedBox");
     box.textContent = "";
+
     if (ep.embed) {
       const iframe = document.createElement("iframe");
       iframe.width = "100%";
       iframe.height = "360";
-      iframe.src = ep.embed;
-      iframe.allow = "autoplay; fullscreen; picture-in-picture";
       iframe.frameBorder = "0";
+      iframe.allow = "autoplay; fullscreen; picture-in-picture";
+      
+      if (ep.embed.includes("facebook.com")) {
+        iframe.src = ep.embed;
+        iframe.allow = "autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share";
+        iframe.allowFullscreen = true;
+        iframe.style.overflow = "hidden";
+        iframe.style.border = "none";
+      } else {
+        iframe.src = ep.embed;
+      }
       box.appendChild(iframe);
+    } else {
+      const errorMessage = document.createElement("p");
+      errorMessage.className = "error-message";
+      errorMessage.textContent = "No hay un reproductor disponible para este episodio.";
+      box.appendChild(errorMessage);
     }
+
   } catch (e) {
     app.innerHTML = '<p class="notice">Episodio no encontrado.</p>';
   }

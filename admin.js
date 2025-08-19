@@ -8,28 +8,50 @@ function parseJWT(t) { try { const p = t.split(".")[1]; return JSON.parse(atob(b
 
 function showLogin() { document.getElementById("loginBox")?.classList.remove("hidden"); document.getElementById("tabs")?.classList.add("hidden") }
 function showPanel() { document.getElementById("loginBox")?.classList.add("hidden"); document.getElementById("tabs")?.classList.remove("hidden") }
-function setAuthUI(on) { const ti = document.getElementById("tokenInfo"); if (ti) ti.textContent = on ? "Sesión activa" : "No autenticado"; const out = document.getElementById("btnLogout"); if (out) out.classList.toggle("hidden", !on); on ? showPanel() : showLogin() }
+
+function updateExpiryUI() {
+  const expirySpan = document.getElementById("tokenExpiry");
+  if (!expirySpan) return;
+  if (ADMIN_TOKEN) {
+    const remainingMs = (ADMIN_EXP * 1000) - Date.now();
+    const remainingDays = Math.ceil(remainingMs / (1000 * 60 * 60 * 24));
+    expirySpan.textContent = `(${remainingDays} días restantes)`;
+  } else {
+    expirySpan.textContent = "";
+  }
+}
+
+function setAuthUI(on) { 
+  const ti = document.getElementById("tokenInfo");
+  if (ti) ti.textContent = on ? "Sesión activa" : "No autenticado";
+  const out = document.getElementById("btnLogout");
+  if (out) out.classList.toggle("hidden", !on);
+  on ? showPanel() : showLogin();
+  updateExpiryUI();
+}
 
 function clearTimer() { if (EXP_TIMER) { clearTimeout(EXP_TIMER); EXP_TIMER = null } }
 function scheduleExpiry() { clearTimer(); const ms = Math.max(0, (ADMIN_EXP * 1000) - Date.now()); EXP_TIMER = setTimeout(() => logout(), ms) }
 function saveToken(t) { const d = parseJWT(t); ADMIN_TOKEN = t; ADMIN_EXP = d.exp || 0; localStorage.setItem("admin_token", t); setAuthUI(true); scheduleExpiry() }
 function loadToken() { const t = localStorage.getItem("admin_token"); if (!t) { logout(); return false } const d = parseJWT(t); if (d.exp && d.exp * 1000 < Date.now()) { logout(); return false } ADMIN_TOKEN = t; ADMIN_EXP = d.exp || 0; setAuthUI(true); scheduleExpiry(); return true }
-function logout() { ADMIN_TOKEN = null; ADMIN_EXP = 0; localStorage.removeItem("admin_token"); setAuthUI(false); clearTimer() }
+function saveApiSecret(s) { API_SECRET_KEY = s; localStorage.setItem("api_secret", s); }
+function loadApiSecret() { const s = localStorage.getItem("api_secret"); API_SECRET_KEY = s; }
+function logout() { ADMIN_TOKEN = null; ADMIN_EXP = 0; localStorage.removeItem("admin_token"); localStorage.removeItem("api_secret"); setAuthUI(false); clearTimer() }
 
-async function fetchJSON(url, options = {}, { admin = false } = {}) {
+async function fetchJSON(url, options = {}) {
   const headers = { ...options.headers };
-  if (admin && ADMIN_TOKEN) {
+  if (ADMIN_TOKEN) {
     headers["Authorization"] = `Bearer ${ADMIN_TOKEN}`;
   }
-  if (admin && API_SECRET_KEY) {
+  if (API_SECRET_KEY) {
     headers["X-API-Key"] = API_SECRET_KEY;
   }
-
+  
   const r = await fetch(url, { ...options, headers });
   if (!r.ok) {
     const errorBody = await r.text();
     console.error(`Error ${r.status}: ${errorBody}`);
-    if (r.status === 401 && admin) {
+    if (r.status === 401) {
       logout();
     }
     throw new Error(r.status);
@@ -46,33 +68,29 @@ async function login() {
   const pass = document.getElementById("password")?.value;
   const apiSecret = document.getElementById("apiSecret")?.value;
   if (!pass || !apiSecret) return;
-  API_SECRET_KEY = apiSecret;
+  
+  saveApiSecret(apiSecret);
   showLoader();
   try {
     const res = await fetchJSON(API_URL + "/api/admin/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ password: pass })
-    }, { admin: true });
+    });
     saveToken(res.token);
     await refreshList();
   } catch (e) {
-    document.getElementById("loginMsg").textContent = "Error de autenticación.";
+    document.getElementById("loginMsg").textContent = "Error de autenticación. Verifique sus credenciales y la clave API.";
   } finally {
     hideLoader();
   }
 }
 
 async function refreshList() {
-  if (!API_SECRET_KEY) {
-    showLogin();
-    return;
-  }
   await ensureAuth();
-  await ensureTS();
   showLoader();
   try {
-    const r = await fetchJSON(API_URL + "/api/episodes", { admin: true });
+    const r = await fetchJSON(API_URL + "/api/episodes");
     const list = document.getElementById("list");
     if (!list) return;
     list.innerHTML = "";
@@ -102,8 +120,12 @@ async function ensureTS() {
 
 async function ensureAuth() {
   if (ADMIN_TOKEN) {
-    const r = await fetchJSON(API_URL + "/api/admin/me", { admin: true });
-    if (r.ok) return true;
+    try {
+      const r = await fetchJSON(API_URL + "/api/admin/me");
+      if (r.ok) return true;
+    } catch {
+      // Fall through to logout
+    }
   }
   logout();
   return false;
@@ -133,10 +155,9 @@ function fillForm(p) {
 
 async function editEpisode(id) {
   if (!await ensureAuth()) return;
-  await ensureTS();
   showLoader();
   try {
-    const ep = await fetchJSON(API_URL + "/api/episodes/" + id, { admin: true });
+    const ep = await fetchJSON(API_URL + "/api/episodes/" + id);
     fillForm(ep);
     document.getElementById("epNum").disabled = true;
   } finally {
@@ -147,7 +168,6 @@ async function editEpisode(id) {
 async function addOrUpdate(e) {
   e.preventDefault();
   if (!await ensureAuth()) return;
-  await ensureTS();
   const p = readForm();
   if (!p.episodio || !p.titulo || !p.fecha) return;
   showLoader();
@@ -159,7 +179,7 @@ async function addOrUpdate(e) {
       method: method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(p)
-    }, { admin: true });
+    });
     
     document.getElementById("formAdd").reset();
     document.getElementById("epNum").disabled = false;
@@ -173,12 +193,11 @@ async function delEpisode(epn) {
   if (!await ensureAuth()) return;
   const id = parseInt(epn, 10);
   if (!id || isNaN(id)) return;
-  await ensureTS();
   showLoader();
   try {
     await fetchJSON(API_URL + "/api/admin/episodes/" + id, {
       method: "DELETE"
-    }, { admin: true });
+    });
     await refreshList();
   } finally {
     hideLoader();
@@ -186,7 +205,11 @@ async function delEpisode(epn) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  loadApiSecret();
   loadToken();
+  if (ADMIN_TOKEN) {
+    refreshList();
+  }
   document.getElementById("btnLogin")?.addEventListener("click", login);
   document.getElementById("btnLogout")?.addEventListener("click", logout);
   document.getElementById("formAdd")?.addEventListener("submit", addOrUpdate);
@@ -204,6 +227,5 @@ document.addEventListener("DOMContentLoaded", () => {
         delEpisode(epn);
       }
     });
-    refreshList();
   }
 });

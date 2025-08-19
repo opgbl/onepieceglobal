@@ -47,7 +47,7 @@ async function fetchJSON(url, options = {}) {
     headers["X-API-Key"] = API_SECRET_KEY;
   }
   
-  const r = await fetch(url, { ...options, headers });
+  const r = await fetch(url, { ...options, headers, credentials: 'include' });
   if (!r.ok) {
     const errorBody = await r.text();
     console.error(`Error ${r.status}: ${errorBody}`);
@@ -89,18 +89,13 @@ async function login() {
 async function initTurnstileAndRefresh() {
   showLoader();
   try {
+    const tsCheck = await fetch(API_URL + "/api/episodes", { credentials: "include" });
+    if (!tsCheck.ok) {
+        await window.__tsGate.ensure();
+    }
     await refreshList();
   } catch (e) {
-    if (e.message === "401") {
-      try {
-        await window.__tsGate.ensure();
-        await refreshList();
-      } catch (tsError) {
-        console.error("Turnstile verification failed:", tsError);
-      }
-    } else {
-      console.error("List refresh failed:", e);
-    }
+    console.error("Turnstile or list refresh failed:", e);
   } finally {
     hideLoader();
   }

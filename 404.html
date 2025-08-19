@@ -2,14 +2,24 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <title>Cargando...</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Redireccionando...</title>
   <script>
     (function() {
       const path = location.pathname.substring(1).replace(/\/$/, '');
-      const param = path ? `?path=${encodeURIComponent(path)}` : '';
-      location.replace(`/onepieceglobal/${param}`);
+      const query = location.search;
+      const hash = location.hash;
+      const param = path ? `?path=${encodeURIComponent(path + query + hash)}` : '';
+      
+      const base = location.pathname.includes('/onepieceglobal') ? 
+        '/onepieceglobal/' : 
+        '/';
+      
+      location.replace(base + param);
     })();
   </script>
 </head>
-<body></body>
+<body>
+  <p>Redireccionando...</p>
+</body>
 </html>

@@ -1,13 +1,34 @@
 let ADMIN_TOKEN = null, ADMIN_EXP = 0, EXP_TIMER = null, API_SECRET_KEY = null;
 const loader = document.getElementById("loader");
-function showLoader() { if (loader) loader.style.display = "block" }
-function hideLoader() { if (loader) loader.style.display = "none" }
 
-function b64url(s) { return s.replace(/-/g, "+").replace(/_/g, "/") }
-function parseJWT(t) { try { const p = t.split(".")[1]; return JSON.parse(atob(b64url(p))) } catch { return {} } }
+function showLoader() { if (loader) loader.style.display = "block"; }
+function hideLoader() { if (loader) loader.style.display = "none"; }
+function showError(msg, elementId = "loginMsg") {
+  const el = document.getElementById(elementId);
+  if (el) {
+    el.textContent = msg;
+    el.style.color = "#f87171";
+  }
+}
 
-function showLogin() { document.getElementById("loginBox")?.classList.remove("hidden"); document.getElementById("tabs")?.classList.add("hidden") }
-function showPanel() { document.getElementById("loginBox")?.classList.add("hidden"); document.getElementById("tabs")?.classList.remove("hidden") }
+function b64url(s) { return s.replace(/-/g, "+").replace(/_/g, "/"); }
+function parseJWT(t) { 
+  try { 
+    const p = t.split(".")[1]; 
+    return JSON.parse(atob(b64url(p))); 
+  } catch { 
+    return {}; 
+  } 
+}
+
+function showLogin() { 
+  document.getElementById("loginBox")?.classList.remove("hidden"); 
+  document.getElementById("tabs")?.classList.add("hidden"); 
+}
+function showPanel() { 
+  document.getElementById("loginBox")?.classList.add("hidden"); 
+  document.getElementById("tabs")?.classList.remove("hidden"); 
+}
 
 function updateExpiryUI() {
   const expirySpan = document.getElementById("tokenExpiry");
@@ -16,6 +37,7 @@ function updateExpiryUI() {
     const remainingMs = (ADMIN_EXP * 1000) - Date.now();
     const remainingDays = Math.ceil(remainingMs / (1000 * 60 * 60 * 24));
     expirySpan.textContent = `(${remainingDays} días restantes)`;
+    expirySpan.style.color = remainingDays <= 1 ? "#f87171" : "";
   } else {
     expirySpan.textContent = "";
   }
@@ -23,23 +45,86 @@ function updateExpiryUI() {
 
 function setAuthUI(on) { 
   const ti = document.getElementById("tokenInfo");
-  if (ti) ti.textContent = on ? "Sesión activa" : "No autenticado";
+  if (ti) {
+    ti.textContent = on ? "Sesión activa" : "No autenticado";
+    ti.style.color = on ? "#3fb950" : "#f87171";
+  }
   const out = document.getElementById("btnLogout");
   if (out) out.classList.toggle("hidden", !on);
   on ? showPanel() : showLogin();
   updateExpiryUI();
 }
 
-function clearTimer() { if (EXP_TIMER) { clearTimeout(EXP_TIMER); EXP_TIMER = null } }
-function scheduleExpiry() { clearTimer(); const ms = Math.max(0, (ADMIN_EXP * 1000) - Date.now()); EXP_TIMER = setTimeout(() => logout(), ms) }
-function saveToken(t) { const d = parseJWT(t); ADMIN_TOKEN = t; ADMIN_EXP = d.exp || 0; localStorage.setItem("admin_token", t); setAuthUI(true); scheduleExpiry() }
-function loadToken() { const t = localStorage.getItem("admin_token"); if (!t) { logout(); return false } const d = parseJWT(t); if (d.exp && d.exp * 1000 < Date.now()) { logout(); return false } ADMIN_TOKEN = t; ADMIN_EXP = d.exp || 0; setAuthUI(true); scheduleExpiry(); return true }
-function saveApiSecret(s) { API_SECRET_KEY = s; localStorage.setItem("api_secret", s); }
-function loadApiSecret() { const s = localStorage.getItem("api_secret"); API_SECRET_KEY = s; }
-function logout() { ADMIN_TOKEN = null; ADMIN_EXP = 0; localStorage.removeItem("admin_token"); localStorage.removeItem("api_secret"); setAuthUI(false); clearTimer() }
+function clearTimer() { 
+  if (EXP_TIMER) { 
+    clearTimeout(EXP_TIMER); 
+    EXP_TIMER = null; 
+  } 
+}
+
+function scheduleExpiry() { 
+  clearTimer(); 
+  const ms = Math.max(0, (ADMIN_EXP * 1000) - Date.now()); 
+  EXP_TIMER = setTimeout(() => {
+    showError("Sesión expirada");
+    logout();
+  }, ms); 
+}
+
+function saveToken(t) { 
+  const d = parseJWT(t); 
+  ADMIN_TOKEN = t; 
+  ADMIN_EXP = d.exp || 0; 
+  localStorage.setItem("admin_token", t); 
+  setAuthUI(true); 
+  scheduleExpiry(); 
+}
+
+function loadToken() { 
+  const t = localStorage.getItem("admin_token"); 
+  if (!t) { 
+    logout(); 
+    return false; 
+  } 
+  const d = parseJWT(t); 
+  if (d.exp && d.exp * 1000 < Date.now()) { 
+    logout(); 
+    return false; 
+  } 
+  ADMIN_TOKEN = t; 
+  ADMIN_EXP = d.exp || 0; 
+  setAuthUI(true); 
+  scheduleExpiry(); 
+  return true; 
+}
+
+function saveApiSecret(s) { 
+  if (s && s.length >= 16) {
+    API_SECRET_KEY = s; 
+    localStorage.setItem("api_secret", s); 
+  }
+}
+
+function loadApiSecret() { 
+  const s = localStorage.getItem("api_secret"); 
+  if (s) API_SECRET_KEY = s; 
+}
+
+function logout() { 
+  ADMIN_TOKEN = null; 
+  ADMIN_EXP = 0; 
+  localStorage.removeItem("admin_token"); 
+  localStorage.removeItem("api_secret"); 
+  setAuthUI(false); 
+  clearTimer(); 
+}
 
 async function fetchJSON(url, options = {}) {
-  const headers = { ...options.headers };
+  const headers = { 
+    'Content-Type': 'application/json',
+    ...options.headers 
+  };
+  
   if (ADMIN_TOKEN) {
     headers["Authorization"] = `Bearer ${ADMIN_TOKEN}`;
   }
@@ -47,191 +132,248 @@ async function fetchJSON(url, options = {}) {
     headers["X-API-Key"] = API_SECRET_KEY;
   }
   
-  const r = await fetch(url, { ...options, headers, credentials: 'include' });
-  if (!r.ok) {
-    const errorBody = await r.text();
-    console.error(`Error ${r.status}: ${errorBody}`);
-    if (r.status === 401) {
-      logout();
-    }
-    throw new Error(r.status);
-  }
-
+  showLoader();
   try {
+    const r = await fetch(API_URL + url, { 
+      ...options, 
+      headers, 
+      credentials: 'include' 
+    });
+    
+    if (!r.ok) {
+      const errorBody = await r.text();
+      console.error(`Error ${r.status}: ${errorBody}`);
+      if (r.status === 401) {
+        showError("Sesión expirada");
+        logout();
+      }
+      throw new Error(errorBody || `Error ${r.status}`);
+    }
+
     return await r.json();
-  } catch {
-    return {};
+  } catch (e) {
+    console.error("Fetch error:", e);
+    throw e;
+  } finally {
+    hideLoader();
   }
 }
 
 async function login() {
   const pass = document.getElementById("password")?.value;
   const apiSecret = document.getElementById("apiSecret")?.value;
-  if (!pass || !apiSecret) return;
+  
+  if (!pass || pass.length < 8) {
+    showError("La contraseña debe tener al menos 8 caracteres");
+    return;
+  }
+  
+  if (!apiSecret || apiSecret.length < 16) {
+    showError("La clave API debe tener al menos 16 caracteres");
+    return;
+  }
   
   saveApiSecret(apiSecret);
-  showLoader();
+  
   try {
-    const res = await fetchJSON(API_URL + "/api/admin/login", {
+    const res = await fetchJSON("/api/admin/login", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ password: pass })
     });
+    
+    if (!res.token) {
+      throw new Error("No se recibió token de autenticación");
+    }
+    
     saveToken(res.token);
     await initTurnstileAndRefresh();
   } catch (e) {
-    document.getElementById("loginMsg").textContent = "Error de autenticación. Verifique sus credenciales y la clave API.";
-  } finally {
-    hideLoader();
+    showError(e.message.includes("401") ? 
+      "Credenciales incorrectas" : 
+      "Error de conexión: " + e.message);
   }
 }
 
 async function initTurnstileAndRefresh() {
-  showLoader();
   try {
     await window.__tsGate.ensure();
     await refreshList();
   } catch (e) {
     console.error("Turnstile or list refresh failed:", e);
-    document.getElementById("loginMsg").textContent = "Error de verificación de Turnstile.";
-  } finally {
-    hideLoader();
+    showError("Error de verificación de seguridad");
   }
 }
 
 async function refreshList() {
-  await ensureAuth();
-  showLoader();
+  if (!await ensureAuth()) return;
+  
   try {
-    const r = await fetchJSON(API_URL + "/api/episodes");
+    const r = await fetchJSON("/api/episodes");
     const list = document.getElementById("list");
     if (!list) return;
+    
     list.innerHTML = "";
     const tpl = document.getElementById("listTpl");
-    for (const ep of r.items) {
+    
+    r.items.forEach(ep => {
       const row = tpl.content.cloneNode(true);
       const rowElem = row.querySelector(".episodeRow");
       rowElem.dataset.id = ep.episodio;
+      
       row.querySelector(".epNum").textContent = ep.episodio;
       row.querySelector(".epTitle").textContent = ep.titulo;
-      row.querySelector(".epDate").textContent = ep.fecha;
+      row.querySelector(".epDate").textContent = new Date(ep.fecha).toLocaleDateString();
+      
       row.querySelector(".editBtn").addEventListener("click", () => editEpisode(ep.episodio));
-      row.querySelector(".delBtn").addEventListener("click", () => delEpisode(ep.episodio));
+      row.querySelector(".delBtn").addEventListener("click", () => confirmDelete(ep.episodio));
+      
       list.appendChild(row);
-    }
-  } finally {
-    hideLoader();
+    });
+  } catch (e) {
+    showError("Error al cargar episodios", "loginMsg");
   }
 }
 
 async function ensureAuth() {
-  if (ADMIN_TOKEN) {
-    try {
-      const r = await fetchJSON(API_URL + "/api/admin/me");
-      if (r.ok) return true;
-    } catch {
-      
-    }
+  if (!ADMIN_TOKEN) {
+    logout();
+    return false;
   }
-  logout();
-  return false;
+  
+  try {
+    await fetchJSON("/api/admin/me");
+    return true;
+  } catch {
+    logout();
+    return false;
+  }
 }
 
 function readForm() {
+  const form = document.getElementById("formAdd");
+  if (!form) return {};
+  
   return {
-    episodio: parseInt(document.getElementById("epNum")?.value, 10),
-    titulo: document.getElementById("epTitle")?.value,
-    fecha: document.getElementById("epDate")?.value,
-    embed: document.getElementById("epEmbed")?.value,
-    dl1080: document.getElementById("epDl1080")?.value,
-    dl720: document.getElementById("epDl720")?.value,
-    dl480: document.getElementById("epDl480")?.value
+    episodio: parseInt(form.epNum.value, 10),
+    titulo: form.epTitle.value.trim(),
+    fecha: form.epDate.value,
+    embed: form.epEmbed.value.trim(),
+    dl1080: form.epDl1080.value.trim(),
+    dl720: form.epDl720.value.trim(),
+    dl480: form.epDl480.value.trim()
   };
 }
 
-function fillForm(p) {
-  document.getElementById("epNum").value = p.episodio;
-  document.getElementById("epTitle").value = p.titulo;
-  document.getElementById("epDate").value = p.fecha;
-  document.getElementById("epEmbed").value = p.embed;
-  document.getElementById("epDl1080").value = p.dl1080 || "";
-  document.getElementById("epDl720").value = p.dl720 || "";
-  document.getElementById("epDl480").value = p.dl480 || "";
+function fillForm(ep) {
+  const form = document.getElementById("formAdd");
+  if (!form) return;
+  
+  form.epNum.value = ep.episodio;
+  form.epTitle.value = ep.titulo;
+  form.epDate.value = ep.fecha;
+  form.epEmbed.value = ep.embed || "";
+  form.epDl1080.value = ep.dl1080 || "";
+  form.epDl720.value = ep.dl720 || "";
+  form.epDl480.value = ep.dl480 || "";
+  
+  form.epNum.disabled = true;
+}
+
+function validateEpisode(ep) {
+  if (!ep.episodio || isNaN(ep.episodio) || ep.episodio <= 0) {
+    showError("Número de episodio inválido", "loginMsg");
+    return false;
+  }
+  
+  if (!ep.titulo || ep.titulo.length < 3) {
+    showError("Título debe tener al menos 3 caracteres", "loginMsg");
+    return false;
+  }
+  
+  if (!ep.fecha) {
+    showError("Fecha requerida", "loginMsg");
+    return false;
+  }
+  
+  return true;
 }
 
 async function editEpisode(id) {
   if (!await ensureAuth()) return;
-  showLoader();
+  
   try {
-    const ep = await fetchJSON(API_URL + "/api/episodes/" + id);
+    const ep = await fetchJSON("/api/episodes/" + id);
     fillForm(ep);
-    document.getElementById("epNum").disabled = true;
-  } finally {
-    hideLoader();
+  } catch (e) {
+    showError("Error al cargar episodio", "loginMsg");
   }
 }
 
-async function addOrUpdate(e) {
-  e.preventDefault();
-  if (!await ensureAuth()) return;
-  const p = readForm();
-  if (!p.episodio || !p.titulo || !p.fecha) return;
-  showLoader();
-  try {
-    const id = p.episodio;
-    const method = document.getElementById("epNum").disabled ? "PUT" : "POST";
-    const url = method === "PUT" ? `/api/admin/episodes/${id}` : `/api/admin/episodes`;
-    await fetchJSON(API_URL + url, {
-      method: method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(p)
-    });
-    
-    document.getElementById("formAdd").reset();
-    document.getElementById("epNum").disabled = false;
-    await refreshList();
-  } finally {
-    hideLoader();
-  }
+function confirmDelete(id) {
+  if (!confirm(`¿Eliminar el episodio ${id}? Esta acción no se puede deshacer.`)) return;
+  delEpisode(id);
 }
 
 async function delEpisode(epn) {
   if (!await ensureAuth()) return;
   const id = parseInt(epn, 10);
   if (!id || isNaN(id)) return;
-  showLoader();
+  
   try {
-    await fetchJSON(API_URL + "/api/admin/episodes/" + id, {
+    await fetchJSON("/api/admin/episodes/" + id, {
       method: "DELETE"
     });
     await refreshList();
-  } finally {
-    hideLoader();
+    showError("", "loginMsg"); 
+  } catch (e) {
+    showError("Error al eliminar episodio", "loginMsg");
+  }
+}
+
+async function addOrUpdate(e) {
+  e.preventDefault();
+  if (!await ensureAuth()) return;
+  
+  const ep = readForm();
+  if (!validateEpisode(ep)) return;
+  
+  try {
+    const isUpdate = document.getElementById("epNum").disabled;
+    const method = isUpdate ? "PUT" : "POST";
+    const url = isUpdate ? `/api/admin/episodes/${ep.episodio}` : `/api/admin/episodes`;
+    
+    await fetchJSON(url, {
+      method: method,
+      body: JSON.stringify(ep)
+    });
+    
+    document.getElementById("formAdd").reset();
+    document.getElementById("epNum").disabled = false;
+    await refreshList();
+    showError("", "loginMsg"); 
+  } catch (e) {
+    showError(e.message.includes("409") ? 
+      "El episodio ya existe" : 
+      "Error al guardar: " + e.message, 
+    "loginMsg");
   }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
   loadApiSecret();
-  loadToken();
-  if (ADMIN_TOKEN) {
+  if (loadToken()) {
     initTurnstileAndRefresh();
   }
+  
   document.getElementById("btnLogin")?.addEventListener("click", login);
   document.getElementById("btnLogout")?.addEventListener("click", logout);
   document.getElementById("formAdd")?.addEventListener("submit", addOrUpdate);
-  const list = document.getElementById("list");
-  if (list) {
-    list.addEventListener("click", e => {
-      const btn = e.target.closest("button");
-      if (!btn) return;
-      const row = btn.closest(".episodeRow");
-      const epn = row?.dataset.id;
-      if (!epn) return;
-      if (btn.classList.contains("editBtn")) {
-        editEpisode(epn);
-      } else if (btn.classList.contains("delBtn")) {
-        delEpisode(epn);
-      }
-    });
-  }
+  
+  document.getElementById("password")?.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") login();
+  });
+  
+  document.getElementById("apiSecret")?.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") login();
+  });
 });

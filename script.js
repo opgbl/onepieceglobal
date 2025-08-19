@@ -30,17 +30,25 @@ async function fetchData(url) {
 
 async function router() {
   const params = new URLSearchParams(location.search);
-  const pathParam = params.get("path");
-  const pathname = pathParam || location.pathname;
-  
+  let pathParam = params.get("path");
+
+  if (pathParam && !pathParam.startsWith('/')) {
+    pathParam = '/' + pathParam;
+  }
+
+  const pathname = (pathParam || location.pathname).replace(/\/$/, "") || "/";
+
   app.innerHTML = "";
   header.innerHTML = "";
-  
-  if (pathname === '/onepieceglobal/' || pathname === '/onepieceglobal/index.html') {
+
+  const homePath = '/onepieceglobal';
+  const episodePathPrefix = '/onepieceglobal/episodio/';
+
+  if (pathname === homePath || pathname === '/onepieceglobal/index.html' || pathname === '/') {
     renderHome();
-  } else if (pathname.startsWith("/onepieceglobal/episodio/") && pathname.split("/").length > 3) {
-    const episodeId = pathname.split("/").pop();
-    if (episodeId) {
+  } else if (pathname.startsWith(episodePathPrefix)) {
+    const episodeId = pathname.substring(episodePathPrefix.length);
+    if (episodeId && !isNaN(episodeId)) {
       renderEpisode(episodeId);
     } else {
       app.innerHTML = '<p class="notice">Página no encontrada.</p>';
@@ -90,7 +98,7 @@ function renderGrid(list, container) {
     if (item.dl720) { const s = document.createElement("span"); s.className = "chip"; s.textContent = "720p"; qwrap.appendChild(s); }
     if (item.dl480) { const s = document.createElement("span"); s.className = "chip"; s.textContent = "480p"; qwrap.appendChild(s); }
     const btn = node.querySelector("[data-link]");
-    btn.href = `./episodio/${ep}`;
+    btn.href = `/onepieceglobal/episodio/${ep}`;
     btn.addEventListener("click", (e) => {
       e.preventDefault();
       history.pushState(null, "", btn.href);

@@ -59,8 +59,8 @@ body {
     border: 1px solid #1f2937;
     border-radius: 1rem;
     overflow: hidden;
-    display: grid;
-    grid-template-rows: 140px auto
+    display: flex;
+    flex-direction: column;
 }
 
 .thumb {
@@ -72,13 +72,16 @@ body {
 
 .meta {
     padding: .9rem;
-    display: grid;
-    gap: .6rem
+    display: flex;
+    flex-direction: column;
+    gap: .6rem;
+    flex-grow: 1;
 }
 
 .title {
     margin: 0;
-    font-size: 1rem
+    font-size: 1rem;
+    flex-grow: 1;
 }
 
 .qualities {
@@ -102,7 +105,8 @@ body {
     background: var(--accent);
     padding: .5rem .8rem;
     border-radius: .6rem;
-    font-weight: 600
+    font-weight: 600;
+    text-align: center;
 }
 
 .player {
@@ -115,14 +119,30 @@ body {
     background: var(--card);
     border: 1px solid #1f2937;
     border-radius: 1rem;
-    padding: 1rem;
     min-height: 240px;
-    display: grid;
-    place-items: center
+    position: relative;
+    padding-bottom: 56.25%;
+    height: 0;
+    overflow: hidden;
 }
 
-.fake-video {
-    opacity: .7
+.video-box #embedBox {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: grid;
+    place-items: center;
+}
+
+.video-box iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
 }
 
 .back {
@@ -143,20 +163,11 @@ body {
   border-left: 3px solid #f87171;
 }
 
-.video-box {
-  position: relative;
-  padding-bottom: 56.25%; /* 16:9 */
-  height: 0;
-  overflow: hidden;
-}
-
-.video-box iframe {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  border: none;
+#dls {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
 }
 
 @media (max-width: 640px) {
@@ -173,7 +184,13 @@ body {
   }
   
   .topbar input {
+    width: 100%;
     max-width: 100%;
     order: 1;
+  }
+  
+  .topbar h1 {
+    width: 100%;
+    text-align: center;
   }
 }

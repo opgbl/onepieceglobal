@@ -51,10 +51,10 @@ async function router() {
     if (episodeId && !isNaN(episodeId)) {
       renderEpisode(episodeId);
     } else {
-      app.innerHTML = '<p class="notice">Página no encontrada.</p>';
+      app.innerHTML = '<p class="notice error" role="alert">Página no encontrada.</p>';
     }
   } else {
-    app.innerHTML = '<p class="notice">Página no encontrada.</p>';
+    app.innerHTML = '<p class="notice error" role="alert">Página no encontrada.</p>';
   }
 
   if (pathParam) {
@@ -65,7 +65,7 @@ async function router() {
 async function renderHome() {
   header.innerHTML = `
     <h1>One Piece Global</h1>
-    <input id="q" placeholder="Buscar episodio..."/>
+    <input id="q" placeholder="Buscar episodio..." aria-label="Buscar episodio por título o número"/>
   `;
   const grid = document.createElement("main");
   grid.id = "grid";
@@ -110,42 +110,74 @@ function renderGrid(list, container) {
 }
 
 async function renderEpisode(id) {
-  header.innerHTML = `<a href="/onepieceglobal/" class="back" data-link>← Volver</a><h1 id="title">Episodio</h1>`;
+  header.innerHTML = `
+    <a href="/onepieceglobal/" class="back" data-link aria-label="Volver a la página principal">← Volver</a>
+    <h1 id="title" aria-live="polite">Cargando episodio...</h1>
+  `;
   document.querySelector("[data-link]").addEventListener("click", (e) => {
     e.preventDefault();
     history.pushState(null, "", e.target.href);
     router();
   });
   
-  const videoPlayer = document.createElement("div");
-  videoPlayer.className = "player";
-  videoPlayer.innerHTML = `<div class="video-box"><div id="embedBox">Cargando…</div></div><div id="dls"></div>`;
-  app.appendChild(videoPlayer);
+  const playerSection = document.createElement("section");
+  playerSection.className = "player";
+  playerSection.setAttribute("aria-label", "Reproductor de video y opciones de descarga");
+  playerSection.innerHTML = `
+    <div class="video-box">
+      <div id="embedBox" aria-live="polite">Cargando video...</div>
+    </div>
+    <div class="episode-info">
+      <h2 id="episode-title"></h2>
+      <p id="episode-date" class="meta-text"></p>
+    </div>
+    <div id="dls" class="download-links" role="region" aria-label="Enlaces de descarga"></div>
+  `;
+  app.appendChild(playerSection);
   
   try {
     const ep = await fetchData(`/api/episodes/${id}`);
-    const title = document.getElementById("title");
+    const title = document.getElementById("episode-title");
+    const date = document.getElementById("episode-date");
     title.textContent = `Episodio ${ep.episodio ?? id}: ${ep.titulo || ""}`;
+    date.textContent = ep.fecha ? `Fecha: ${new Date(ep.fecha).toLocaleDateString()}` : "";
     
     const dls = document.getElementById("dls");
     dls.innerHTML = "";
-    if (ep.dl1080) { const a = document.createElement("a"); a.className = "btn"; a.textContent = "Descargar 1080p"; a.href = ep.dl1080; dls.appendChild(a); }
-    if (ep.dl720) { const a = document.createElement("a"); a.className = "btn"; a.textContent = "Descargar 720p"; a.href = ep.dl720; dls.appendChild(a); }
-    if (ep.dl480) { const a = document.createElement("a"); a.className = "btn"; a.textContent = "Descargar 480p"; a.href = ep.dl480; dls.appendChild(a); }
+    const qualities = [
+      { res: "1080p", url: ep.dl1080 },
+      { res: "720p", url: ep.dl720 },
+      { res: "480p", url: ep.dl480 }
+    ];
+    qualities.forEach(q => {
+      if (q.url) {
+        const a = document.createElement("a");
+        a.className = "btn download-btn";
+        a.textContent = `Descargar ${q.res}`;
+        a.href = q.url;
+        a.setAttribute("aria-label", `Descargar episodio en calidad ${q.res}`);
+        a.setAttribute("download", "");
+        dls.appendChild(a);
+      }
+    });
     
     const box = document.getElementById("embedBox");
     box.textContent = "";
     if (ep.embed) {
       const iframe = document.createElement("iframe");
       iframe.width = "100%";
-      iframe.height = "360";
+      iframe.height = "100%";
       iframe.src = ep.embed;
       iframe.allow = "autoplay; fullscreen; picture-in-picture";
       iframe.frameBorder = "0";
+      iframe.setAttribute("title", `Reproductor de video para Episodio ${ep.episodio}`);
       box.appendChild(iframe);
+    } else {
+      box.innerHTML = '<p class="notice error" role="alert">No se encontró el video para este episodio.</p>';
     }
   } catch (e) {
-    app.innerHTML = '<p class="notice">Episodio no encontrado.</p>';
+    const box = document.getElementById("embedBox");
+    box.innerHTML = '<p class="notice error" role="alert">Episodio no encontrado o error al cargar el video.</p>';
   }
 }
 

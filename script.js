@@ -124,8 +124,10 @@ async function renderEpisode(id) {
   playerSection.className = "player";
   playerSection.setAttribute("aria-label", "Reproductor de video y opciones de descarga");
   playerSection.innerHTML = `
-    <div class="video-box">
-      <div id="embedBox" aria-live="polite">Cargando video...</div>
+    <div class="video-container">
+      <div class="video-box">
+        <div id="embedBox" aria-live="polite">Cargando video...</div>
+      </div>
     </div>
     <div class="episode-info">
       <h2 id="episode-title"></h2>
